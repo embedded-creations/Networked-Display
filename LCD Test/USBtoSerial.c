@@ -37,6 +37,7 @@
 #include "USBtoSerial.h"
 #include <util/delay.h>
 #include "SpiLcd.h"
+#include "vnc.h"
 
 /** Circular buffer to hold data from the host before it is sent to the device via the serial port. */
 static RingBuffer_t USBtoUSART_Buffer;
@@ -75,12 +76,23 @@ USB_ClassInfo_CDC_Device_t VirtualSerial_CDC_Interface =
 	};
 
 
+#define VNC_BUFFER_MAX 200
+
+uint8_t vncBuffer[VNC_BUFFER_MAX];
+uint8_t vncResponseBuffer[MAXIMUM_VNCRESPONSE_SIZE];
+
+unsigned int vncBufferSize = 0;
+
+
 /** Main program entry point. This routine contains the overall program flow, including initial
  *  setup of all components and the main program loop.
  */
 int main(void)
 {
-	SetupHardware();
+	unsigned int vncRemainder;
+	unsigned int vncResponseSize;
+
+    SetupHardware();
 
 	RingBuffer_InitBuffer(&USBtoUSART_Buffer, USBtoUSART_Buffer_Data, sizeof(USBtoUSART_Buffer_Data));
 	RingBuffer_InitBuffer(&USARTtoUSB_Buffer, USARTtoUSB_Buffer_Data, sizeof(USARTtoUSB_Buffer_Data));
@@ -90,16 +102,34 @@ int main(void)
 
 	for (;;)
 	{
-		/* Only try to read in bytes from the CDC interface if the transmit buffer is not full */
-		if (!(RingBuffer_IsFull(&USBtoUSART_Buffer)))
+		while ( vncBufferSize < VNC_BUFFER_MAX )
 		{
-			int16_t ReceivedByte = CDC_Device_ReceiveByte(&VirtualSerial_CDC_Interface);
+            int16_t ReceivedByte = CDC_Device_ReceiveByte(&VirtualSerial_CDC_Interface);
+		    if(ReceivedByte < 0)
+		        break;
 
-			/* Read bytes from the USB OUT endpoint into the USART transmit buffer */
-			if (!(ReceivedByte < 0))
-			  RingBuffer_Insert(&USBtoUSART_Buffer, ReceivedByte);
+		    vncBuffer[vncBufferSize++] = (uint8_t)ReceivedByte;
 		}
 
+		vncRemainder = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
+
+		memcpy(vncBuffer + (vncBufferSize - vncRemainder), vncBuffer, vncRemainder);
+
+		vncBufferSize = vncRemainder;
+
+		vncResponseSize = Vnc_LoadResponseBuffer(vncResponseBuffer);
+
+		for(int i=0; i<vncResponseSize; i++)
+		{
+            if (CDC_Device_SendByte(&VirtualSerial_CDC_Interface,
+                                    vncResponseBuffer[i]) != ENDPOINT_READYWAIT_NoError)
+            {
+                TransmitString("TXfull");
+                break;
+            }
+		}
+
+#if 0
 		// modified to make USB loopback
 		/* Check if the UART receive buffer flush timer has expired or the buffer is nearly full */
 		uint16_t BufferCount = RingBuffer_GetCount(&USBtoUSART_Buffer);
@@ -122,6 +152,9 @@ int main(void)
 				RingBuffer_Remove(&USBtoUSART_Buffer);
 			}
 		}
+#endif
+
+
 
 		CDC_Device_USBTask(&VirtualSerial_CDC_Interface);
 		USB_USBTask();
@@ -158,7 +191,7 @@ void SetupHardware(void)
 
 	SetupLcd();
 	lcd_initial();
-    FillDisplay();
+	ClearDisplay();
 }
 
 /** Event handler for the library USB Connection event. */
@@ -216,3 +249,13 @@ void EVENT_CDC_Device_LineEncodingChanged(USB_ClassInfo_CDC_Device_t* const CDCI
 {
 }
 
+void TransmitString(char * string)
+{
+    for(int i=0; i<strlen(string); i++)
+        Serial_SendByte(string[i]);
+}
+
+void TransmitByte(unsigned char byte)
+{
+    Serial_SendByte(byte);
+}

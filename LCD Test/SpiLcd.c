@@ -180,7 +180,7 @@ void lcd_initial (void)
 }
 
 
-void FillDisplay(void)
+void ClearDisplay(void)
 {
     write_command(0x2C);
     dsp_single_colour(0xff, 0xff);

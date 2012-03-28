@@ -25,6 +25,57 @@
 
 #include "vnc.h"
 
+#include "USBtoSerial.h"
+
+
+
+enum {  VNCSTATE_DEAD,
+        VNCSTATE_AUTHFAILED,
+        VNCSTATE_NOTCONNECTED,
+        VNCSTATE_WAITFORAUTHTYPE,
+        VNCSTATE_WAITFORVNCAUTHWORD,
+        VNCSTATE_WAITFORVNCAUTHRESPONSE,
+        VNCSTATE_SENTCLIENTINITMESSAGE,
+        VNCSTATE_WAITFORSERVERNAME,
+        VNCSTATE_CONNECTED,
+        VNCSTATE_CONNECTED_REFRESH,
+        VNCSTATE_WAITFORUPDATE,
+        VNCSTATE_PROCESSINGUPDATE,
+        VNCSTATE_PROCESSDONE,
+          };
+
+enum {  VNCSENDSTATE_INIT,
+        VNCSENDSTATE_VERSIONSENT,
+        VNCSENDSTATE_AUTHWORDSENT,
+        VNCSENDSTATE_CLIENTINITMESSAGESENT,
+        VNCSENDSTATE_PIXELFORMATSENT,
+        VNCSENDSTATE_ENCODINGTYPESENT,
+        VNCSENDSTATE_PARTIALREFRESHSENT
+          };
+
+enum {  VNCPPSTATE_IDLE,
+        VNCPPSTATE_OUTBOUNDS,
+        VNCPPSTATE_HEXTILE
+          };
+
+enum {  HEXTILESTATE_INIT,
+        HEXTILESTATE_DONE,
+        HEXTILESTATE_PARSEHEADER,
+        HEXTILESTATE_DRAWRAW,
+        HEXTILESTATE_DROPRAW,
+        HEXTILESTATE_FILLBUFFER,
+        HEXTILESTATE_DRAWTILE
+          };
+
+// masked used to decode the hextile subencoding byte
+#define HEXTILE_RAW_MASK           0x01
+#define HEXTILE_BACKGROUND_MASK    0x02
+#define HEXTILE_FOREGROUND_MASK    0x04
+#define HEXTILE_SUBRECT_MASK       0x08
+#define HEXTILE_SUBRECTCOLOR_MASK  0x10
+
+
+
 
 // temporary buffer for sending TCP data to the VNC server
 unsigned char messageBuffer[MAXIMUM_VNCMESSAGE_SIZE];
@@ -116,15 +167,6 @@ static unsigned int dataSize = 0;
 
 
 
-// called directly in main to setup the uIP TCP connection to the VNC server
-void vnc_init(void)
-{
-	unsigned int ipaddr[2];
-	uip_ipaddr(ipaddr, 169,254,211,175);
-	uip_connect((u16_t *)ipaddr, 5900);
-}
-
-
 
 //  removes the amount of pixels specified by interPixelCount from the buffer
 //  or as many as are currently in the buffer
@@ -167,10 +209,13 @@ void drawPixelsInView(void)
 	//   the next byte boundary
 	pixel8offset = (8-currentDrawX) % 8 ;
 	
+#if 0
 	// set the start address for drawing here, 
 	*COMMAND_ADDRESS = CSRW_COMMAND ;
 	*READWRITE_ADDRESS = (unsigned char)writeAddress ;
-	*READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;	
+	*READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;
+
+#endif
 
 	// off 8bit boundary
 	if( pixel8offset )
@@ -194,18 +239,18 @@ void drawPixelsInView(void)
 					j>>=1;
 				}
 				
-				for(i=i; i<(8-pixel8offset)+interPixelCount; i++)
+				for( ; i<(8-pixel8offset)+interPixelCount; i++)
 				{
 				  j>>=1;
 				}
 				
-				for(i=i; i<8; i++)
+				for( ; i<8; i++)
 				{
 					byte |= j;
 					j>>=1;
 				}
 				
-	
+#if 0
 				// read in and mask the byte from the display
 				*COMMAND_ADDRESS = READ_COMMAND ;
 				byte &= *COMMAND_ADDRESS ;
@@ -228,7 +273,7 @@ void drawPixelsInView(void)
 				// draw it back
 				*COMMAND_ADDRESS = WRITE_COMMAND ;
 				*READWRITE_ADDRESS = byte ;
-				
+#endif
 				
 				//update the counters
 				
@@ -246,6 +291,7 @@ void drawPixelsInView(void)
 			if( dataSize < pixel8offset )
 				return;
 							
+#if 0
 			// create the mask for the existing data
 			byte=0;
 			j=0x80;
@@ -277,7 +323,7 @@ void drawPixelsInView(void)
 			// draw it back
 			*COMMAND_ADDRESS = WRITE_COMMAND ;
 			*READWRITE_ADDRESS = byte ;
-			
+#endif
 			
 			//update the counters
 			
@@ -301,6 +347,7 @@ void drawPixelsInView(void)
 			if( dataSize < 8 )
 				return;
 			
+#if 0
 			// draw 8
 			byte=0x00;
 			j=0x80;
@@ -315,6 +362,7 @@ void drawPixelsInView(void)
 			//draw byte to screen
 			*COMMAND_ADDRESS = WRITE_COMMAND ;
 			*READWRITE_ADDRESS = byte ;
+#endif
 			
 			// decrease interpixelcounter by 8
 			dataPtr += 8;
@@ -332,6 +380,7 @@ void drawPixelsInView(void)
 			if( dataSize < interPixelCount )
 				return;
 			
+#if 0
 			// create the mask for the existing data
 			byte=0x00;
 			j=0x01;
@@ -364,6 +413,7 @@ void drawPixelsInView(void)
 			// draw it back
 			*COMMAND_ADDRESS = WRITE_COMMAND ;
 			*READWRITE_ADDRESS = byte ;
+#endif
 			
 			dataPtr += interPixelCount;
 			dataSize -= interPixelCount;
@@ -379,7 +429,7 @@ void drawPixelsInView(void)
 
 
 // function used to receive and draw hextile updates to the screen
-// this definetly needs to be optimized and probably separated into smaller
+// this definitely needs to be optimized and probably separated into smaller
 // sub-functions to reduce the stack usage, but for now, it works...
 // Any tile that only partially overlaps the local display window will be
 // dropped
@@ -709,7 +759,7 @@ hextile_fillbuffer:
       goto hextile_done; 
     }
     
-    
+#if 0
 	// compute the offset of the hextileBuffer from the 8-pixel SED1330 columns
     temp1 = tileX & 0x07;
 
@@ -829,6 +879,7 @@ hextile_fillbuffer:
 	    
 	    }
 	  }
+#endif
 	    
 	  hextileState = HEXTILESTATE_DONE ;
 	  goto hextile_done; 
@@ -948,7 +999,7 @@ decodeHextile:
 		  
 		  if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
 		  {
-		    goto vncppstate_idle;
+		      goto vncppstate_idle;
 		  }
 		  break;
 
@@ -959,25 +1010,13 @@ decodeHextile:
 }
 
 
-void processNewdata(void)
+unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length)
 {
-	unsigned char i;
-	
-	// these are used to store data at the end of a segment for use when the next
-	// segment arrives
-	static unsigned char remainderBuffer[REMAINDERBUFFER_SIZE];
-	static unsigned char remainder = 0;	
-	
-	// if there was any previous remaining data, put it before the appdata
-	for(i=0; i<remainder; i++)
-		*(unsigned char *)((unsigned int)uip_appdata-remainder+i)
-			= remainderBuffer[i];
-	
 	// init pointer to appdata - remainder
-	dataPtr = (unsigned char *)((unsigned int)uip_appdata - remainder);
+	dataPtr = buffer;
 	
 	// init total to appdata + remainder
-	dataSize = uip_datalen() + remainder;
+	dataSize = length;
 
 	do {
 		switch(VNCstate)
@@ -996,6 +1035,13 @@ void processNewdata(void)
 				{
 					if( dataPtr[3] == 0x02 )
 						VNCstate = VNCSTATE_WAITFORVNCAUTHWORD;
+					// no authentication
+					else if( dataPtr[3] == 0x01 )
+                    {
+                        TransmitString("noauth");
+					    VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
+                        VNCstate = VNCSTATE_SENTCLIENTINITMESSAGE;
+                    }
 					else VNCstate = VNCSTATE_AUTHFAILED;
 					
 					dataPtr += 4;
@@ -1066,7 +1112,7 @@ void processNewdata(void)
 					{	
 						TransmitString("unrec\n\r");
 						VNCstate = VNCSTATE_DEAD;
-						return;
+						return 0;
 					}
 					
 					rectangleCount = (dataPtr[2]<<8) + dataPtr[3];
@@ -1087,65 +1133,58 @@ void processNewdata(void)
 			default:
 				TransmitString("err:pro");
 				dataSize = 0;
+	            while(1);
 				break;
 		}	
-	} while( dataSize > REMAINDERBUFFER_SIZE ) ;
+	}
+	while( dataSize > REMAINDERBUFFER_SIZE ) ;
 	
 	// copy any remainder data into the remainder buffer
-	if( dataSize )
-	{
-		for( i=0; i<dataSize; i++)
-			remainderBuffer[i] = dataPtr[i];
-		
-		// update the remainder size
-		remainder = dataSize;
-	}
-	else remainder = 0x00;
+	return dataSize;
 }
 
 
-
-void sendMessage(unsigned char sendState)
+unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 {
-	switch(sendState)
+	switch(VNCsendState)
 	{
 		case VNCSENDSTATE_INIT:
 			if( VNCstate > VNCSTATE_NOTCONNECTED )
 			{
-				memcpy_P(messageBuffer, versionMessage, sizeof(versionMessage)-1);
-				uip_send(messageBuffer, sizeof(versionMessage)-1);
+				TransmitString("s:INIT ");
+			    memcpy_P(buffer, versionMessage, sizeof(versionMessage)-1);
 				VNCsendState = VNCSENDSTATE_VERSIONSENT;
-				return;
+				return sizeof(versionMessage)-1;
 			}
 			break;
 
 		case VNCSENDSTATE_VERSIONSENT:
 			if( VNCstate > VNCSTATE_WAITFORVNCAUTHWORD )
 			{
-				memcpy_P(messageBuffer, VNCauthWord, sizeof(VNCauthWord));
-				uip_send(messageBuffer, sizeof(VNCauthWord));
+                TransmitString("s:VSENT ");
+				memcpy_P(buffer, VNCauthWord, sizeof(VNCauthWord));
 				VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
-				return;
+				return sizeof(VNCauthWord);
 			}
 			break;
 
 		case VNCSENDSTATE_AUTHWORDSENT:
 			if( VNCstate > VNCSTATE_WAITFORVNCAUTHRESPONSE )
 			{
-				messageBuffer[0] = '\0';
-				uip_send(messageBuffer, 1);
+                TransmitString("s:AWSENT ");
+				buffer[0] = '\0';
 				VNCsendState = VNCSENDSTATE_CLIENTINITMESSAGESENT;
-				return;
+				return 1;
 			}
 			break;
 			
 		case VNCSENDSTATE_CLIENTINITMESSAGESENT:
 			if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
 			{
-				memcpy_P(messageBuffer, pixelFormatMessage, sizeof(pixelFormatMessage));
-				uip_send(messageBuffer, sizeof(pixelFormatMessage));
+                TransmitString("s:CLIMS ");
+				memcpy_P(buffer, pixelFormatMessage, sizeof(pixelFormatMessage));
 				VNCsendState = VNCSENDSTATE_PIXELFORMATSENT;
-				return;
+				return sizeof(pixelFormatMessage);
 			}
 			break;
 
@@ -1153,43 +1192,43 @@ void sendMessage(unsigned char sendState)
 			//TransmitString("<-");
 			if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
 			{
-				memcpy_P(messageBuffer, encodingTypeMessage, sizeof(encodingTypeMessage));
-				uip_send(messageBuffer, sizeof(encodingTypeMessage));
-				
+                TransmitString("s:PFMSENT ");
+				memcpy_P(buffer, encodingTypeMessage, sizeof(encodingTypeMessage));
 				VNCsendState = VNCSENDSTATE_ENCODINGTYPESENT;
 				//transmitSpace = 0;
-				return;
+				return sizeof(encodingTypeMessage);
 			}
 			break;
 
 		case VNCSENDSTATE_ENCODINGTYPESENT:
 			if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
 			{
-				memcpy_P(messageBuffer, refreshMessage, sizeof(refreshMessage));
+                TransmitString("s:WFSNAME ");
+				memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
 				// change the request to a full refresh
-				messageBuffer[1] = 0x00;
-				uip_send(messageBuffer, sizeof(refreshMessage));
-				
+				buffer[1] = 0x00;
 				VNCsendState = VNCSENDSTATE_PARTIALREFRESHSENT;
-				return;
+				return sizeof(refreshMessage);
 			}
 			break;
 
 		case VNCSENDSTATE_PARTIALREFRESHSENT:
-			if( VNCstate == VNCSTATE_CONNECTED_REFRESH || uip_poll() )
+			//if( VNCstate == VNCSTATE_CONNECTED_REFRESH || uip_poll() )
+		    if( VNCstate == VNCSTATE_CONNECTED_REFRESH )
 			{
-				memcpy_P(messageBuffer, refreshMessage, sizeof(refreshMessage));
-				uip_send(messageBuffer, sizeof(refreshMessage));
+                TransmitString("s:PREFS ");
+				memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
 			}
-			return;
+			return sizeof(refreshMessage);
 
 		default:
 			TransmitString("err:ACK");
 			break;
 	}
+	return 0;
 }
 
-
+#if 0
 void vnc_app(void)
 {
 	unsigned char transmitSpace = 1;
@@ -1249,3 +1288,4 @@ void vnc_app(void)
 			transmitSpace = 0;
 	}
 }
+#endif

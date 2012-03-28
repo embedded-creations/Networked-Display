@@ -3,6 +3,7 @@
 
 void SetupLcd(void);
 void lcd_initial (void);
+void ClearDisplay(void);
 
 
 

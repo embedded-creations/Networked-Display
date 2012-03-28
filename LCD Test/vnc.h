@@ -25,69 +25,13 @@
  *
  */
 
+#include <avr/pgmspace.h>
 
-/* UIP_APPSTATE_SIZE: The size of the application-specific state
-   stored in the uip_conn structure. */
-#define UIP_APPSTATE_SIZE 1
-
-#include "uip.h"
-#include "buffUART.h"
-#include "display.h"
-#include <progmem.h>
-
-void vnc_init(void);
-void vnc_app(void);
-
+unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length);
+unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer);
 
 
 #define RAW_DECODING 0
-
-
-enum { 	VNCSTATE_DEAD,
-		VNCSTATE_AUTHFAILED,
-		VNCSTATE_NOTCONNECTED,
-		VNCSTATE_WAITFORAUTHTYPE,
-		VNCSTATE_WAITFORVNCAUTHWORD,
-		VNCSTATE_WAITFORVNCAUTHRESPONSE,
-		VNCSTATE_SENTCLIENTINITMESSAGE,
-		VNCSTATE_WAITFORSERVERNAME,
-		VNCSTATE_CONNECTED,
-		VNCSTATE_CONNECTED_REFRESH,
-		VNCSTATE_WAITFORUPDATE,
-		VNCSTATE_PROCESSINGUPDATE,
-		VNCSTATE_PROCESSDONE,
-		  };
-		  
-enum {	VNCSENDSTATE_INIT,
-		VNCSENDSTATE_VERSIONSENT,
-		VNCSENDSTATE_AUTHWORDSENT,
-		VNCSENDSTATE_CLIENTINITMESSAGESENT,
-		VNCSENDSTATE_PIXELFORMATSENT,
-		VNCSENDSTATE_ENCODINGTYPESENT,
-		VNCSENDSTATE_PARTIALREFRESHSENT
-		  };
-		  
-enum {	VNCPPSTATE_IDLE,
-		VNCPPSTATE_OUTBOUNDS,
-		VNCPPSTATE_HEXTILE
-		  };
-
-enum {  HEXTILESTATE_INIT,
-        HEXTILESTATE_DONE,
-        HEXTILESTATE_PARSEHEADER,
-        HEXTILESTATE_DRAWRAW,
-        HEXTILESTATE_DROPRAW,
-        HEXTILESTATE_FILLBUFFER,
-        HEXTILESTATE_DRAWTILE
-          };
-          
-// masked used to decode the hextile subencoding byte
-#define HEXTILE_RAW_MASK           0x01
-#define HEXTILE_BACKGROUND_MASK    0x02
-#define HEXTILE_FOREGROUND_MASK    0x04
-#define HEXTILE_SUBRECT_MASK       0x08
-#define HEXTILE_SUBRECTCOLOR_MASK  0x10
-          
 
 
 // up to 16 bytes of TCP data can be left unused and buffered until the next
@@ -96,12 +40,8 @@ enum {  HEXTILESTATE_INIT,
 
 #define MAXIMUM_VNCMESSAGE_SIZE 20
 
-
-#define FS_STATISTICS 0
-
-
-
-#define UIP_APPCALL     vnc_app
+// Todo: what's the real value?
+#define MAXIMUM_VNCRESPONSE_SIZE 50
 
 
 #endif
