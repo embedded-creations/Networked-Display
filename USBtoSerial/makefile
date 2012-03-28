@@ -60,7 +60,7 @@
 
 
 # MCU name
-MCU = at90usb1287
+MCU = atmega32u4
 
 
 # Target architecture (see library "Board Types" documentation).
@@ -70,7 +70,7 @@ ARCH = AVR8
 # Target board (see library "Board Types" documentation, NONE for projects not requiring
 # LUFA board drivers). If USER is selected, put custom board drivers in a directory called
 # "Board" inside the application directory.
-BOARD = USBKEY
+BOARD = ADAFRUITU4
 
 
 # Processor frequency.
@@ -84,7 +84,7 @@ BOARD = USBKEY
 #     does not *change* the processor frequency - it should merely be updated to
 #     reflect the processor speed set externally so that the code can use accurate
 #     software delays.
-F_CPU = 8000000
+F_CPU = 16000000
 
 
 # Input clock frequency.
@@ -116,7 +116,7 @@ OBJDIR = .
 
 
 # Path to the LUFA library
-LUFA_PATH = ../..
+LUFA_PATH = ../LUFA-120219
 
 
 # LUFA library compile-time options and predefined tokens
@@ -344,10 +344,10 @@ LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 # Type: avrdude -c ?
 # to get a full listing.
 #
-AVRDUDE_PROGRAMMER = jtagmkII
+AVRDUDE_PROGRAMMER = avr109
 
 # com1 = serial port. Use lpt1 to connect to parallel port.
-AVRDUDE_PORT = usb
+AVRDUDE_PORT = COM7
 
 AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 #AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET).eep
