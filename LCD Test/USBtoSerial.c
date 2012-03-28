@@ -35,6 +35,8 @@
  */
 
 #include "USBtoSerial.h"
+#include <util/delay.h>
+#include "SpiLcd.h"
 
 /** Circular buffer to hold data from the host before it is sent to the device via the serial port. */
 static RingBuffer_t USBtoUSART_Buffer;
@@ -98,9 +100,10 @@ int main(void)
 			  RingBuffer_Insert(&USBtoUSART_Buffer, ReceivedByte);
 		}
 
+		// modified to make USB loopback
 		/* Check if the UART receive buffer flush timer has expired or the buffer is nearly full */
-		uint16_t BufferCount = RingBuffer_GetCount(&USARTtoUSB_Buffer);
-		if ((TIFR0 & (1 << TOV0)) || (BufferCount > (uint8_t)(sizeof(USARTtoUSB_Buffer_Data) * .75)))
+		uint16_t BufferCount = RingBuffer_GetCount(&USBtoUSART_Buffer);
+		if ((TIFR0 & (1 << TOV0)) || (BufferCount > (uint8_t)(sizeof(USBtoUSART_Buffer) * (3 / 4))))
 		{
 			/* Clear flush timer expiry flag */
 			TIFR0 |= (1 << TOV0);
@@ -110,19 +113,15 @@ int main(void)
 			{
 				/* Try to send the next byte of data to the host, abort if there is an error without dequeuing */
 				if (CDC_Device_SendByte(&VirtualSerial_CDC_Interface,
-				                        RingBuffer_Peek(&USARTtoUSB_Buffer)) != ENDPOINT_READYWAIT_NoError)
+				                        RingBuffer_Peek(&USBtoUSART_Buffer)) != ENDPOINT_READYWAIT_NoError)
 				{
 					break;
 				}
 
 				/* Dequeue the already sent byte from the buffer now we have confirmed that no transmission error occurred */
-				RingBuffer_Remove(&USARTtoUSB_Buffer);
+				RingBuffer_Remove(&USBtoUSART_Buffer);
 			}
 		}
-
-		/* Load the next byte from the USART transmit buffer into the USART */
-		if (!(RingBuffer_IsEmpty(&USBtoUSART_Buffer)))
-		  Serial_SendByte(RingBuffer_Remove(&USBtoUSART_Buffer));
 
 		CDC_Device_USBTask(&VirtualSerial_CDC_Interface);
 		USB_USBTask();
@@ -141,16 +140,39 @@ void SetupHardware(void)
 
 	/* Hardware Initialization */
 	LEDs_Init();
+
+    /* Set the new baud rate before configuring the USART */
+    UBRR1  = SERIAL_2X_UBBRVAL(57600);
+
+    uint8_t ConfigMask = ((1 << UCSZ11) | (1 << UCSZ10));
+
+    /* Reconfigure the USART in double speed mode for a wider baud rate range at the expense of accuracy */
+    UCSR1C = ConfigMask;
+    UCSR1A = (1 << U2X1);
+    UCSR1B = ((1 << RXCIE1) | (1 << TXEN1) | (1 << RXEN1));
+
 	USB_Init();
 
 	/* Start the flush timer so that overflows occur rapidly to push received bytes to the USB interface */
 	TCCR0B = (1 << CS02);
+
+	SetupLcd();
+	lcd_initial();
+    FillDisplay();
 }
 
 /** Event handler for the library USB Connection event. */
 void EVENT_USB_Device_Connect(void)
 {
 	LEDs_SetAllLEDs(LEDMASK_USB_ENUMERATING);
+	Serial_SendByte('E');
+}
+
+void EVENT_CDC_Device_ControLineStateChanged(USB_ClassInfo_CDC_Device_t* const CDCInterfaceInfo)
+{
+    Serial_SendByte('!');
+
+    // we can assume we just lost or gained connection with the VNC server, clear any buffers we have
 }
 
 /** Event handler for the library USB Disconnection event. */
@@ -192,45 +214,5 @@ ISR(USART1_RX_vect, ISR_BLOCK)
  */
 void EVENT_CDC_Device_LineEncodingChanged(USB_ClassInfo_CDC_Device_t* const CDCInterfaceInfo)
 {
-	uint8_t ConfigMask = 0;
-
-	switch (CDCInterfaceInfo->State.LineEncoding.ParityType)
-	{
-		case CDC_PARITY_Odd:
-			ConfigMask = ((1 << UPM11) | (1 << UPM10));
-			break;
-		case CDC_PARITY_Even:
-			ConfigMask = (1 << UPM11);
-			break;
-	}
-
-	if (CDCInterfaceInfo->State.LineEncoding.CharFormat == CDC_LINEENCODING_TwoStopBits)
-	  ConfigMask |= (1 << USBS1);
-
-	switch (CDCInterfaceInfo->State.LineEncoding.DataBits)
-	{
-		case 6:
-			ConfigMask |= (1 << UCSZ10);
-			break;
-		case 7:
-			ConfigMask |= (1 << UCSZ11);
-			break;
-		case 8:
-			ConfigMask |= ((1 << UCSZ11) | (1 << UCSZ10));
-			break;
-	}
-
-	/* Must turn off USART before reconfiguring it, otherwise incorrect operation may occur */
-	UCSR1B = 0;
-	UCSR1A = 0;
-	UCSR1C = 0;
-
-	/* Set the new baud rate before configuring the USART */
-	UBRR1  = SERIAL_2X_UBBRVAL(CDCInterfaceInfo->State.LineEncoding.BaudRateBPS);
-
-	/* Reconfigure the USART in double speed mode for a wider baud rate range at the expense of accuracy */
-	UCSR1C = ConfigMask;
-	UCSR1A = (1 << U2X1);
-	UCSR1B = ((1 << RXCIE1) | (1 << TXEN1) | (1 << RXEN1));
 }
 
