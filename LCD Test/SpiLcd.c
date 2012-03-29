@@ -84,15 +84,22 @@ void lcd_initial (void)
 //-------------------Software Reset-------------------------------//
     write_command(0x11); //Sleep out
     _delay_ms(120);
-    //ST7735R Frame Rate
+
+    // ST7735R Frame Rate (Frame rate=fosc/((RTNA + 20) x (LINE + FPA + BPA)))
+    // default values are written for all (unnecessary?)
+    // normal/full
     write_command(0xB1);
-    write_data(0x01);
-    write_data(0x2C);
-    write_data(0x2D);
+    write_data(0x01); // RTNA = 1
+    write_data(0x2C); // FPA = 0x2C
+    write_data(0x2D); // BPA = 0x2D
+
+    // idle/8
     write_command(0xB2);
     write_data(0x01);
     write_data(0x2C);
     write_data(0x2D);
+
+    // partial/full
     write_command(0xB3);
     write_data(0x01);
     write_data(0x2C);
@@ -102,17 +109,17 @@ void lcd_initial (void)
     write_data(0x2D);
     //------------------------------------End ST7735R Frame Rate-----------------------------------------//
     write_command(0xB4); //Column inversion
-    write_data(0x07);
+    write_data(0x07); // frame inversion for all modes
     //------------------------------------ST7735R Power Sequence-----------------------------------------//
     write_command(0xC0);
-    write_data(0xA2);
-    write_data(0x02);
-    write_data(0x84);
+    write_data(0xA2); // values and number of values don't seem to match spec - default is 2, 0xA2 is setting don't cares
+    write_data(0x02); // default is 0x70
+    write_data(0x84); // there's only two parameters, what's this third?
     write_command(0xC1);
-    write_data(0xC5);
+    write_data(0xC5); // default is 5, C5 is setting don't care bits
     write_command(0xC2);
-    write_data(0x0A);
-    write_data(0x00);
+    write_data(0x0A); // default is 1, 0xA = medium low + don't cares
+    write_data(0x00); // default is 1, 0 = lower step-up cycle in booster 2,4
     write_command(0xC3);
     write_data(0x8A);
     write_data(0x2A);
@@ -120,10 +127,14 @@ void lcd_initial (void)
     write_data(0x8A);
     write_data(0xEE);
     //---------------------------------End ST7735R Power Sequence-------------------------------------//
-    write_command(0xC5); //VCOM
+    write_command(0xC5); //VCOM voltage setting
     write_data(0x0E);
     write_command(0x36); //MX, MY, RGB mode
-    write_data(0xC8);
+    write_data(0xC8);   // MH=0 : horiz refresh left to right
+                        // RGB=1 : BGR color filter panel
+                        // ML=0 : vert refresh top to bottom
+                        // MV=0, MX=MY=1 (controls MCU to memory write/read direction)
+
     //------------------------------------ST7735R Gamma Sequence-----------------------------------------//
     write_command(0xe0);
     write_data(0x02);
@@ -159,12 +170,15 @@ void lcd_initial (void)
     write_data(0x00);
     write_data(0x02);
     write_data(0x10);
+
+    // column address set: XS = 2, XE = 129
     write_command(0x2A);
     write_data(0x00);
     write_data(0x02);
     write_data(0x00);
     write_data(0x81);
 
+    // row address set: YS = 1, YE = 160
     write_command(0x2B);
     write_data(0x00);
     write_data(0x01);
@@ -172,17 +186,20 @@ void lcd_initial (void)
     write_data(0xA0);
     //------------------------------------End ST7735R Gamma Sequence-----------------------------------------//
 
+    // interface pixel format:
     write_command(0x3A);
-    write_data(0x05);
+    write_data(0x05); // 16-bit per pixel
     //write_command(0x3A);//65k mode
     //write_data(0x05);
+
+    // display on
     write_command(0x29); //Displa
 }
 
 
 void ClearDisplay(void)
 {
-    write_command(0x2C);
+    write_command(0x2C); // memory write
     dsp_single_colour(0xff, 0xff);
 }
 
