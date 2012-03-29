@@ -24,6 +24,7 @@
 
 
 #include "vnc.h"
+#include "SpiLcd.h"
 
 #include "USBtoSerial.h"
 
@@ -96,8 +97,12 @@ prog_uchar VNCauthWord[] =
 	{ 0x54, 0x44, 0xC7, 0x4E, 0xDE, 0xDC, 0x8C, 0xDF,
 	  0x97, 0xB6, 0x51, 0x93, 0x04, 0xD9, 0x9E, 0x90 };
 
+#define SCREEN_WIDTH    128
+#define SCREEN_HEIGHT   160
+
+
 // partial refresh request
-prog_char refreshMessage[] = { 0x03,0x01,0,0,0,0,0x01,0x00,0x00,0x80 };
+prog_char refreshMessage[] = { 0x03,0x01,0,0,0,0,SCREEN_WIDTH/256,SCREEN_WIDTH,SCREEN_HEIGHT/256,SCREEN_HEIGHT };
 
 // sets the pixel format for 8-bit BGR format
 prog_uchar pixelFormatMessage[] = { 0x00, 0,0,0,
@@ -125,8 +130,8 @@ static unsigned long interPixelCount;
 // X0,Y0 = upper-right coordinate, X1,Y1 equal last displayed column,row + 1
 static unsigned int windowX0 = 0;
 static unsigned int windowY0 = 0;
-static unsigned int windowX1 = 256;
-static unsigned int windowY1 = 128;
+static unsigned int windowX1 = SCREEN_WIDTH;
+static unsigned int windowY1 = SCREEN_HEIGHT;
 
 // specifies the coordinates of the current frameBufferUpdate rectangle
 // X0,Y0 = upper-right coordinate, X1,Y1 equal last column,row + 1
@@ -454,7 +459,7 @@ void processHextile(void)
   unsigned int writeAddress;
   
   // temporary 16x16 pixel buffer
-  static unsigned char hextileBuffer[3][16];
+  static unsigned char hextileBuffer[16][16];
   
   switch( hextileState )
   {
@@ -579,19 +584,14 @@ hextile_parseheader:
       else numSubrects = 0;
 
       // fill the hextile buffer with the background
-      for(i=0; i<16; i++)
-      {
-        if( background != 0xFF)
-        { 
-          hextileBuffer[0][i] = 0xFF;
-          hextileBuffer[1][i] = 0xFF;
-        }
-        else
+        for (j = 0; j < 16; j++)
         {
-          hextileBuffer[0][i] = 0x00;
-          hextileBuffer[1][i] = 0x00;
+            for (i = 0; i < 16; i++)
+
+            {
+                hextileBuffer[ j ][ i ] = background;
+            }
         }
-      }
       
       hextileState = HEXTILESTATE_FILLBUFFER ;
       
@@ -680,6 +680,15 @@ hextile_fillbuffer:
         y1 = y0 + (temp2 & 0x0F);
       
 
+        for (j = y0; j <= y1; j++)
+        {
+            for (i = x0; i <= x1; i++)
+            {
+                hextileBuffer[ j ][ i ] = byte;
+            }
+        }
+
+#if 0
         // are there any pixels in the first byte?
         if( x0 < 0x08 )
         {
@@ -741,6 +750,7 @@ hextile_fillbuffer:
           }
    
         }
+#endif
      
         numSubrects--;
      }
@@ -759,6 +769,8 @@ hextile_fillbuffer:
       goto hextile_done; 
     }
     
+    DrawHextile(tileX, tileY, tileW, tileH, hextileBuffer);
+
 #if 0
 	// compute the offset of the hextileBuffer from the 8-pixel SED1330 columns
     temp1 = tileX & 0x07;
@@ -1072,7 +1084,9 @@ unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length)
 			case VNCSTATE_SENTCLIENTINITMESSAGE:
 				if( dataSize >= 24 )
 				{
-					// use interPixelCount to keep track of the name length
+					// ignore framebuffer-width/height, pixel-format
+
+				    // use interPixelCount to keep track of the name length
 					interPixelCount = dataPtr[20];
 					interPixelCount <<= 8;
 					interPixelCount |= dataPtr[21];
@@ -1084,16 +1098,35 @@ unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length)
 					VNCstate = VNCSTATE_WAITFORSERVERNAME;
 					dataPtr += 24;
 					dataSize -= 24;
+
+                    TransmitString("ipc:");
+                    TransmitHex(interPixelCount/256);
+                    TransmitHex(interPixelCount);
+                    TransmitString(" ");
 				}
 				break;
 		
 			case VNCSTATE_WAITFORSERVERNAME:
 				if( dataSize >= interPixelCount)
 				{
-					// remove the name from the buffer (and ignore)
-					dataPtr += interPixelCount;
-					dataSize -= interPixelCount;
+                    TransmitString("ipc:");
+                    TransmitHex(interPixelCount/256);
+                    TransmitHex(interPixelCount);
+                    TransmitString(" ");
+
 	
+					TransmitString("name:");
+					for(int i=0; i<interPixelCount; i++)
+					{
+					    TransmitByte(dataPtr[i]);
+					    //TransmitByte(' ');
+					}
+					TransmitString(":: ");
+
+                    // remove the name from the buffer (and ignore)
+                    dataPtr += interPixelCount;
+                    dataSize -= interPixelCount;
+
 					VNCstate = VNCSTATE_CONNECTED;
 				}
 				break;
@@ -1122,6 +1155,11 @@ unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length)
 					
 					VNCpixelProcessorState = VNCPPSTATE_IDLE;
 					VNCstate = VNCSTATE_PROCESSINGUPDATE;
+
+					TransmitString("fb:");
+					TransmitHex(rectangleCount/256);
+					TransmitHex(rectangleCount);
+					TransmitString(" ");
 				}
 				
 				break;
@@ -1172,7 +1210,7 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 			if( VNCstate > VNCSTATE_WAITFORVNCAUTHRESPONSE )
 			{
                 TransmitString("s:AWSENT ");
-				buffer[0] = '\0';
+				buffer[0] = '\0';  // client init message is 0 indicating server should give exclusive access to this client
 				VNCsendState = VNCSENDSTATE_CLIENTINITMESSAGESENT;
 				return 1;
 			}
@@ -1203,7 +1241,7 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 		case VNCSENDSTATE_ENCODINGTYPESENT:
 			if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
 			{
-                TransmitString("s:WFSNAME ");
+                TransmitString("s:ENCTSENT ");
 				memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
 				// change the request to a full refresh
 				buffer[1] = 0x00;

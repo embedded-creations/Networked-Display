@@ -68,7 +68,17 @@ void dsp_single_colour(uint8_t DH, uint8_t DL)
 }
 
 
-
+void SlowLoadDisplay(void)
+{
+    uint8_t i,j;
+ //RamAdressSet();
+ for (i=0;i<160;i++)
+    for (j=0;j<128;j++)
+    {
+        LCD_DataWrite(0,0);
+        _delay_ms(25);
+    }
+}
 
 
 
@@ -134,6 +144,9 @@ void lcd_initial (void)
                         // RGB=1 : BGR color filter panel
                         // ML=0 : vert refresh top to bottom
                         // MV=0, MX=MY=1 (controls MCU to memory write/read direction)
+    //write_data(0xE8);  //MV, MX, MY
+    //write_data(0x48); //!MV, !MY, MX
+    //write_data(0x08); // ! ! !
 
     //------------------------------------ST7735R Gamma Sequence-----------------------------------------//
     write_command(0xe0);
@@ -193,7 +206,7 @@ void lcd_initial (void)
     //write_data(0x05);
 
     // display on
-    write_command(0x29); //Displa
+    write_command(0x29);
 }
 
 
@@ -202,4 +215,58 @@ void ClearDisplay(void)
     write_command(0x2C); // memory write
     dsp_single_colour(0xff, 0xff);
 }
+
+void Write8bitPixel(uint8_t pixel)
+{
+    uint16_t pixel16 = 0;
+
+    pixel16 |= (pixel & 0x07) << 13;
+    pixel16 |= (pixel & (0x07 << 3)) << 5;
+    pixel16 |= (pixel & (0x03 << 6)) << 3;
+
+
+    LCD_DataWrite(pixel16/256, pixel16);
+}
+
+
+#define ROW_OFFSET_L    1
+#define COL_OFFSET_L    2
+
+void DrawHextile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsigned char tileH, void * hextileBuffer)
+{
+    unsigned int low, high;
+
+    // setup tile boundaries
+    // column address set: XS = 2, XE = 129
+    low = COL_OFFSET_L + tileX;
+    high = COL_OFFSET_L + tileX + tileW - 1;
+    write_command(0x2A);
+    write_data(low/256);
+    write_data(low);
+    write_data(high/256);
+    write_data(high);
+
+    // row address set: YS = 1, YE = 160
+    low = ROW_OFFSET_L + tileY;
+    high = ROW_OFFSET_L + tileY + tileH - 1;
+    write_command(0x2B);
+    write_data(low/256);
+    write_data(low);
+    write_data(high/256);
+    write_data(high);
+
+
+    // write tile
+    write_command(0x2C); // memory write
+
+    for (unsigned int j = 0; j < tileH; j++)
+    {
+        for (unsigned int i = 0; i < tileW; i++)
+
+        {
+            Write8bitPixel(*(unsigned char*)(hextileBuffer + i + j*16));
+        }
+    }
+}
+
 
