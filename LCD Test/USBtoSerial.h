@@ -75,6 +75,7 @@
 
 		void TransmitString(char * string);
 		void TransmitByte(unsigned char byte);
+		void TransmitHex(unsigned char data);
 
 
 #endif

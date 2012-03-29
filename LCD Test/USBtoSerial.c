@@ -113,7 +113,7 @@ int main(void)
 
 		vncRemainder = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
 
-		memcpy(vncBuffer + (vncBufferSize - vncRemainder), vncBuffer, vncRemainder);
+		memcpy(vncBuffer, vncBuffer + (vncBufferSize - vncRemainder), vncRemainder);
 
 		vncBufferSize = vncRemainder;
 
@@ -258,4 +258,19 @@ void TransmitString(char * string)
 void TransmitByte(unsigned char byte)
 {
     Serial_SendByte(byte);
+}
+
+void TransmitHex(unsigned char data)
+{
+    unsigned char temp = data & 0xF0;
+    temp >>= 4;
+
+    if(temp >= 0x0A)
+        TransmitByte('A' + temp - 0x0A);
+    else TransmitByte('0' + temp);
+
+    temp = data & 0x0F;
+    if(temp >= 0x0A)
+        TransmitByte('A' + temp - 0x0A);
+    else TransmitByte('0' + temp);
 }
