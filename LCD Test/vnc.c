@@ -1256,9 +1256,8 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 			{
                 TransmitString("s:PREFS ");
 				memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
-	            return sizeof(refreshMessage);
 			}
-		    break;
+			return sizeof(refreshMessage);
 
 		default:
 			TransmitString("err:ACK");

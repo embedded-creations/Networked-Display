@@ -184,19 +184,21 @@ void lcd_initial (void)
     write_data(0x02);
     write_data(0x10);
 
-    // column address set: XS = 2, XE = 129
+    // column address set: XS = 0, XE = 127
     write_command(0x2A);
     write_data(0x00);
-    write_data(0x02);
+    //write_data(0x02);
     write_data(0x00);
-    write_data(0x81);
+    write_data(0x00);
+    //write_data(0x81);
+    write_data(0x7F);
 
-    // row address set: YS = 1, YE = 160
+    // row address set: YS = 0, YE = 159
     write_command(0x2B);
     write_data(0x00);
-    write_data(0x01);
     write_data(0x00);
-    write_data(0xA0);
+    write_data(0x00);
+    write_data(0x9F);
     //------------------------------------End ST7735R Gamma Sequence-----------------------------------------//
 
     // interface pixel format:
@@ -229,15 +231,15 @@ void Write8bitPixel(uint8_t pixel)
 }
 
 
-#define ROW_OFFSET_L    1
-#define COL_OFFSET_L    2
+#define ROW_OFFSET_L    0
+#define COL_OFFSET_L    0
 
 void DrawHextile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsigned char tileH, void * hextileBuffer)
 {
     unsigned int low, high;
 
     // setup tile boundaries
-    // column address set: XS = 2, XE = 129
+    // column address set with offset
     low = COL_OFFSET_L + tileX;
     high = COL_OFFSET_L + tileX + tileW - 1;
     write_command(0x2A);
@@ -246,7 +248,7 @@ void DrawHextile(unsigned int tileX, unsigned int tileY, unsigned char tileW, un
     write_data(high/256);
     write_data(high);
 
-    // row address set: YS = 1, YE = 160
+    // row address set with offset
     low = ROW_OFFSET_L + tileY;
     high = ROW_OFFSET_L + tileY + tileH - 1;
     write_command(0x2B);
