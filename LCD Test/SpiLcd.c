@@ -226,15 +226,18 @@ void Write8bitPixel(uint8_t pixel)
     pixel16 |= (pixel & (0x07 << 3)) << 5;
     pixel16 |= (pixel & (0x03 << 6)) << 3;
 
-
     LCD_DataWrite(pixel16/256, pixel16);
 }
 
+void WritePixel(uint16_t pixel)
+{
+    LCD_DataWrite(pixel/256, pixel);
+}
 
 #define ROW_OFFSET_L    0
 #define COL_OFFSET_L    0
 
-void DrawHextile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsigned char tileH, void * hextileBuffer)
+void DrawHextile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsigned char tileH, unsigned char bytes_per_pixel, uint8_t hextileBuffer[16][16*bytes_per_pixel])
 {
     unsigned int low, high;
 
@@ -263,10 +266,13 @@ void DrawHextile(unsigned int tileX, unsigned int tileY, unsigned char tileW, un
 
     for (unsigned int j = 0; j < tileH; j++)
     {
-        for (unsigned int i = 0; i < tileW; i++)
+        for (unsigned int i = 0; i < tileW * bytes_per_pixel; i += bytes_per_pixel)
 
         {
-            Write8bitPixel(*(unsigned char*)(hextileBuffer + i + j*16));
+            if(bytes_per_pixel == 1)
+                Write8bitPixel(hextileBuffer[j][i]);
+            else
+                WritePixel(hextileBuffer[j][i] + hextileBuffer[j][i+1]*256);
         }
     }
 }

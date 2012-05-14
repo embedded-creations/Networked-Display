@@ -100,19 +100,12 @@ prog_uchar VNCauthWord[] =
 #define SCREEN_WIDTH    128
 #define SCREEN_HEIGHT   160
 
+#define BYTES_PER_PIXEL  2
+prog_uchar pixelFormatMessage[] = VNC_PIXEL_FORMAT_MESSAGE_16BIT;
 
 // partial refresh request
 prog_char refreshMessage[] = { 0x03,0x01,0,0,0,0,SCREEN_WIDTH/256,SCREEN_WIDTH,SCREEN_HEIGHT/256,SCREEN_HEIGHT };
 
-// sets the pixel format for 8-bit BGR format
-prog_uchar pixelFormatMessage[] = { 0x00, 0,0,0,
-                                    8,8,
-                                    0,1,
-                                    0x00, 0x07,
-                                    0x00, 0x07,
-                                    0x00, 0x03,
-                                    0, 3, 6,
-                                    0,0,0 };
 
 // requests hextile encoding only
 prog_uchar encodingTypeMessage[] = { 2, 0, 0, 1, 0, 0, 0, 5 } ;
@@ -209,7 +202,7 @@ void drawPixelsInView(void)
 	unsigned int writeAddress = (currentDrawX >> 3)
 	                          + (unsigned int)( currentDrawY * ( 256/8 ) ) ;
 	
-
+TransmitString("*^drawPixelsInView^* ");
 	// if current x=1 offset will be 7, indicating 7 pixels until
 	//   the next byte boundary
 	pixel8offset = (8-currentDrawX) % 8 ;
@@ -233,7 +226,6 @@ void drawPixelsInView(void)
 			{
 				if( dataSize < interPixelCount)
 					return;
-
 				
 				// create the mask for the existing data
 				byte=0;
@@ -444,13 +436,15 @@ void processHextile(void)
   static unsigned int tileX, tileY;
   static unsigned char tileW, tileH;
   
-  static unsigned char background, foreground;
+  static unsigned int background, foreground;
   
   static unsigned char subencodingByte;
   
   static unsigned char numSubrects;
   
-  unsigned char byte, temp1, temp2, temp3;
+  unsigned char temp1, temp2, temp3;
+
+  unsigned int rectangleColor;
   
   unsigned char i,j;
   
@@ -459,7 +453,7 @@ void processHextile(void)
   unsigned int writeAddress;
   
   // temporary 16x16 pixel buffer
-  static unsigned char hextileBuffer[16][16];
+  static unsigned char hextileBuffer[16][16 * BYTES_PER_PIXEL];
   
   switch( hextileState )
   {
@@ -519,17 +513,16 @@ hextile_parseheader:
       subencodingByte = *dataPtr++;
       dataSize--;
       
-      
       temp3 = 0;
       
       if( subencodingByte & HEXTILE_BACKGROUND_MASK )
-        temp3++;
+        temp3 += BYTES_PER_PIXEL;
         
       if( subencodingByte & HEXTILE_FOREGROUND_MASK )
-        temp3++;
+          temp3 += BYTES_PER_PIXEL;
         
       if( subencodingByte & HEXTILE_SUBRECT_MASK )
-        temp3++;
+          temp3 += BYTES_PER_PIXEL;
         
       // if the optional bytes are not in the buffer, exit
       if( temp3 > dataSize )
@@ -547,14 +540,14 @@ hextile_parseheader:
         if( tileX < windowX0 || (tileX + tileW) > windowX1 || tileY < windowY0
             || (tileY + tileH) > windowY1 )
         {
-          interPixelCount = tileW * tileH;
+          interPixelCount = tileW * tileH * BYTES_PER_PIXEL;
           hextileState = HEXTILESTATE_DROPRAW;
           goto hextile_dropraw;
         }
         
         currentDrawX = tileX;
         currentDrawY = tileY;
-        interPixelCount = tileW;
+        interPixelCount = tileW * BYTES_PER_PIXEL;
 
         hextileState = HEXTILESTATE_DRAWRAW;
         goto hextile_drawraw;
@@ -563,16 +556,18 @@ hextile_parseheader:
       // else - if background specified read in pixel value
       if( subencodingByte & HEXTILE_BACKGROUND_MASK )
       {
-		//TransmitByte('B');
         background = *dataPtr++;
-        dataSize--;
+        if(BYTES_PER_PIXEL == 2)
+            background |= (*dataPtr++)*256;
+        dataSize -= BYTES_PER_PIXEL;
       }
     
       if( subencodingByte & HEXTILE_FOREGROUND_MASK )
       {
-		//TransmitByte('F');
         foreground = *dataPtr++;
-        dataSize--;
+          if(BYTES_PER_PIXEL == 2)
+              foreground |= (*dataPtr++)*256;
+          dataSize -= BYTES_PER_PIXEL;
       }
 
       if( subencodingByte & HEXTILE_SUBRECT_MASK )
@@ -586,10 +581,12 @@ hextile_parseheader:
       // fill the hextile buffer with the background
         for (j = 0; j < 16; j++)
         {
-            for (i = 0; i < 16; i++)
+            for (i = 0; i < 16 * BYTES_PER_PIXEL; i+=BYTES_PER_PIXEL)
 
             {
                 hextileBuffer[ j ][ i ] = background;
+                if(BYTES_PER_PIXEL == 2)
+                    hextileBuffer[ j ][ i+1 ] = background/256;
             }
         }
       
@@ -628,7 +625,7 @@ hextile_drawraw:
             hextileState = HEXTILESTATE_DONE;
             goto hextile_done; 
           }
-          interPixelCount = tileW;
+          interPixelCount = tileW * BYTES_PER_PIXEL;
         }
       }
       while( dataSize >= interPixelCount );
@@ -641,20 +638,21 @@ hextile_fillbuffer:
 	  // draw all the subrectangles to the buffer
       while( numSubrects != 0 )
       {
-      
-        byte = foreground;
+        rectangleColor = foreground;
       
         // is subrect in buffer (return if not)
         if( subencodingByte & HEXTILE_SUBRECTCOLOR_MASK )
         {
-          if( dataSize < 3 )
+          if( dataSize < 2 + BYTES_PER_PIXEL )
             return;
           
           // subrect color;
-          byte = dataPtr[0];
+          rectangleColor = dataPtr[0];
+          if(BYTES_PER_PIXEL == 2)
+              rectangleColor |= dataPtr[1] * 256;
           
-          dataSize--;
-          dataPtr++;
+          dataSize-=BYTES_PER_PIXEL;
+          dataPtr+=BYTES_PER_PIXEL;
         }
         else if( dataSize < 2 )
           return;
@@ -682,9 +680,12 @@ hextile_fillbuffer:
 
         for (j = y0; j <= y1; j++)
         {
-            for (i = x0; i <= x1; i++)
+            for (i = x0 * BYTES_PER_PIXEL; i <= x1 * BYTES_PER_PIXEL; i+=BYTES_PER_PIXEL)
             {
-                hextileBuffer[ j ][ i ] = byte;
+                hextileBuffer[ j ][ i ] = rectangleColor;
+                if(BYTES_PER_PIXEL == 2)
+                    hextileBuffer[ j ][ i+1 ] = rectangleColor / 256;
+
             }
         }
 
@@ -765,11 +766,12 @@ hextile_fillbuffer:
     if( tileX < windowX0 || (tileX + tileW) > windowX1 || tileY < windowY0
         || (tileY + tileH) > windowY1 )
     {
+      TransmitString("outofbounds ");
       hextileState = HEXTILESTATE_DONE ;
       goto hextile_done; 
     }
     
-    DrawHextile(tileX, tileY, tileW, tileH, hextileBuffer);
+    DrawHextile(tileX, tileY, tileW, tileH, BYTES_PER_PIXEL, hextileBuffer);
 
 #if 0
 	// compute the offset of the hextileBuffer from the 8-pixel SED1330 columns
@@ -1254,10 +1256,16 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 			//if( VNCstate == VNCSTATE_CONNECTED_REFRESH || uip_poll() )
 		    if( VNCstate == VNCSTATE_CONNECTED_REFRESH )
 			{
+                static uint8_t counter;
+#if 0
                 TransmitString("s:PREFS ");
+		        TransmitHex(counter++);
+		        TransmitByte(' ');
+#endif
 				memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
+	            return sizeof(refreshMessage);
 			}
-			return sizeof(refreshMessage);
+		    break;
 
 		default:
 			TransmitString("err:ACK");

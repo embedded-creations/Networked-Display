@@ -33,6 +33,25 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer);
 
 #define RAW_DECODING 0
 
+#define VNC_PIXEL_FORMAT_MESSAGE_8BIT   { 0x00, 0,0,0, \
+                                            8,8, \
+                                            0,1, \
+                                            0x00, 0x07, \
+                                            0x00, 0x07, \
+                                            0x00, 0x03, \
+                                            0, 3, 6, \
+                                            0,0,0 }
+
+// this is specific to the LCD display, and should probably be defined outside of VNC.h
+#define VNC_PIXEL_FORMAT_MESSAGE_16BIT   { 0x00, 0,0,0, \
+                                            16,16, \
+                                            0,1, \
+                                            0x00, 0x1F, \
+                                            0x00, 0x3F, \
+                                            0x00, 0x1F, \
+                                            11, 5, 0, \
+                                            0,0,0 }
+
 
 // up to 16 bytes of TCP data can be left unused and buffered until the next
 // segment arrives
