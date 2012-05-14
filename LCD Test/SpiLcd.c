@@ -237,6 +237,46 @@ void WritePixel(uint16_t pixel)
 #define ROW_OFFSET_L    0
 #define COL_OFFSET_L    0
 
+
+void SetupTile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsigned char tileH)
+{
+    unsigned int low, high;
+
+    // setup tile boundaries
+    // column address set with offset
+    low = COL_OFFSET_L + tileX;
+    high = COL_OFFSET_L + tileX + tileW - 1;
+    write_command(0x2A);
+    write_data(low/256);
+    write_data(low);
+    write_data(high/256);
+    write_data(high);
+
+    // row address set with offset
+    low = ROW_OFFSET_L + tileY;
+    high = ROW_OFFSET_L + tileY + tileH - 1;
+    write_command(0x2B);
+    write_data(low/256);
+    write_data(low);
+    write_data(high/256);
+    write_data(high);
+
+    // write tile
+    write_command(0x2C); // memory write
+}
+
+// TODO: really need to fix this to have units of pixels and bytes be separate (interpixel count refers to bytes as of now)
+void DrawRawTile(unsigned int pixelCount, unsigned char bytes_per_pixel, uint8_t pixelBuffer[])
+{
+    for (unsigned int i = 0; i < pixelCount; i+=bytes_per_pixel)
+    {
+            if(bytes_per_pixel == 1)
+                Write8bitPixel(pixelBuffer[i]);
+            else
+                WritePixel(pixelBuffer[i] + pixelBuffer[i+1]*256);
+    }
+}
+
 void DrawHextile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsigned char tileH, unsigned char bytes_per_pixel, uint8_t hextileBuffer[16][16*bytes_per_pixel])
 {
     unsigned int low, high;

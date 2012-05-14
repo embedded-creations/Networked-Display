@@ -133,11 +133,6 @@ static unsigned int updateWindowY0;
 static unsigned int updateWindowX1;
 static unsigned int updateWindowY1;
 
-// keeps track of the pixel position to draw to the display
-// these must be initialized before calling the drawPixelsInView() function
-static unsigned int currentDrawX;
-static unsigned int currentDrawY;
-
 
 // VNCstate is used by the processNewData and sendMessage functions to
 // determine when to send message while connecting to a VNC server, and when
@@ -189,242 +184,6 @@ void dropOutOfViewPixels(void)
 }
 
 
-
-// draws interPixelCount number of pixels to the display, starting at
-// currentX, currentY and incrementing currentX until there are no more
-// pixels in the buffer, or all on the row have been drawn
-// there is no bounds checking on currentX and and the side of the display
-void drawPixelsInView(void)
-{
-
-	unsigned char pixel8offset ;
-	unsigned char i, j, byte ;
-	unsigned int writeAddress = (currentDrawX >> 3)
-	                          + (unsigned int)( currentDrawY * ( 256/8 ) ) ;
-	
-TransmitString("*^drawPixelsInView^* ");
-	// if current x=1 offset will be 7, indicating 7 pixels until
-	//   the next byte boundary
-	pixel8offset = (8-currentDrawX) % 8 ;
-	
-#if 0
-	// set the start address for drawing here, 
-	*COMMAND_ADDRESS = CSRW_COMMAND ;
-	*READWRITE_ADDRESS = (unsigned char)writeAddress ;
-	*READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;
-
-#endif
-
-	// off 8bit boundary
-	if( pixel8offset )
-	{
-			// decrease interPixelCounter by offset
-			// draw until the 8-bit boundary
-
-
-			if( interPixelCount < pixel8offset )
-			{
-				if( dataSize < interPixelCount)
-					return;
-				
-				// create the mask for the existing data
-				byte=0;
-				j=0x80;
-				for(i=0; i<8-pixel8offset; i++)
-				{
-					byte |= j;
-					j>>=1;
-				}
-				
-				for( ; i<(8-pixel8offset)+interPixelCount; i++)
-				{
-				  j>>=1;
-				}
-				
-				for( ; i<8; i++)
-				{
-					byte |= j;
-					j>>=1;
-				}
-				
-#if 0
-				// read in and mask the byte from the display
-				*COMMAND_ADDRESS = READ_COMMAND ;
-				byte &= *COMMAND_ADDRESS ;
-				
-				// reset the address
-				*COMMAND_ADDRESS = CSRW_COMMAND ;
-				*READWRITE_ADDRESS = (unsigned char)writeAddress ;
-				*READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;	
-				
-				// AND/OR the two together
-				for(i=0; i<pixel8offset; i++)
-				{
-					if( dataPtr[i] != 0xFF )
-						byte |= j; 
-					else byte &= ~j;
-					
-					j>>=1;
-				}
-				
-				// draw it back
-				*COMMAND_ADDRESS = WRITE_COMMAND ;
-				*READWRITE_ADDRESS = byte ;
-#endif
-				
-				//update the counters
-				
-				dataSize -= interPixelCount;
-				dataPtr += interPixelCount;
-				
-				interPixelCount = 0;
-				writeAddress++;
-				currentDrawX+=interPixelCount;
-				
-				return;
-			}
-			
-			
-			if( dataSize < pixel8offset )
-				return;
-							
-#if 0
-			// create the mask for the existing data
-			byte=0;
-			j=0x80;
-			for(i=pixel8offset; i<8; i++)
-			{
-				byte |= j;
-				j>>=1;
-			}
-
-			// read in and mask the byte from the display
-			*COMMAND_ADDRESS = READ_COMMAND ;
-			byte &= *COMMAND_ADDRESS ;
-			
-			// reset the address
-			*COMMAND_ADDRESS = CSRW_COMMAND ;
-			*READWRITE_ADDRESS = (unsigned char)writeAddress ;
-			*READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;	
-			
-			// AND/OR the two together
-			for(i=0; i<pixel8offset; i++)
-			{
-				if( dataPtr[i] != 0xFF )
-					byte |= j; 
-				else byte &= ~j;
-				
-				j>>=1;
-			}
-			
-			// draw it back
-			*COMMAND_ADDRESS = WRITE_COMMAND ;
-			*READWRITE_ADDRESS = byte ;
-#endif
-			
-			//update the counters
-			
-			dataSize -= pixel8offset;
-			dataPtr += pixel8offset;
-			
-			interPixelCount -= pixel8offset;
-			writeAddress++;
-			currentDrawX+=pixel8offset;
-			pixel8offset=0;
-			
-			// continue to draw the rest of the line
-			
-	}
-	
-	if( !pixel8offset )
-	{
-
-		while( interPixelCount >= 8 )
-		{
-			if( dataSize < 8 )
-				return;
-			
-#if 0
-			// draw 8
-			byte=0x00;
-			j=0x80;
-			
-			for(i=0;i<8;i++)
-			{
-				byte <<= 1;	
-				if( dataPtr[i] != 0xFF )
-					byte |= (0x01);
-			}
-			
-			//draw byte to screen
-			*COMMAND_ADDRESS = WRITE_COMMAND ;
-			*READWRITE_ADDRESS = byte ;
-#endif
-			
-			// decrease interpixelcounter by 8
-			dataPtr += 8;
-			dataSize -= 8;
-			
-			currentDrawX += 8 ;
-			writeAddress++;
-			interPixelCount -= 8;
-
-		}
-
-		// if here - there's only a few pixels left, draw them
-		if( interPixelCount != 0 )
-		{
-			if( dataSize < interPixelCount )
-				return;
-			
-#if 0
-			// create the mask for the existing data
-			byte=0x00;
-			j=0x01;
-			for(i=interPixelCount; i<8; i++)
-			{
-				byte |= j;
-				j<<=1;
-			}
-	
-			// read in and mask the byte from the display
-			*COMMAND_ADDRESS = READ_COMMAND ;
-			byte &= *COMMAND_ADDRESS ;
-			
-			// reset the address
-			*COMMAND_ADDRESS = CSRW_COMMAND ;
-			*READWRITE_ADDRESS = (unsigned char)writeAddress ;
-			*READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;	
-			
-			j=0x80;
-			// AND/OR the two together
-			for(i=0; i<interPixelCount; i++)
-			{
-				if( dataPtr[i] != 0xFF )
-					byte |= j; 
-				else byte &= ~j;
-				
-				j>>=1;
-			}
-			
-			// draw it back
-			*COMMAND_ADDRESS = WRITE_COMMAND ;
-			*READWRITE_ADDRESS = byte ;
-#endif
-			
-			dataPtr += interPixelCount;
-			dataSize -= interPixelCount;
-			currentDrawX += interPixelCount;			
-			interPixelCount=0;
-		}
-	}
-
-}
-
-
-
-
-
 // function used to receive and draw hextile updates to the screen
 // this definitely needs to be optimized and probably separated into smaller
 // sub-functions to reduce the stack usage, but for now, it works...
@@ -449,8 +208,6 @@ void processHextile(void)
   unsigned char i,j;
   
   unsigned char x0, y0, x1, y1;
-  
-  unsigned int writeAddress;
   
   // temporary 16x16 pixel buffer
   static unsigned char hextileBuffer[16][16 * BYTES_PER_PIXEL];
@@ -545,9 +302,9 @@ hextile_parseheader:
           goto hextile_dropraw;
         }
         
-        currentDrawX = tileX;
-        currentDrawY = tileY;
-        interPixelCount = tileW * BYTES_PER_PIXEL;
+        interPixelCount = tileW * tileH * BYTES_PER_PIXEL;
+
+        SetupTile(tileX, tileY, tileW, tileH);
 
         hextileState = HEXTILESTATE_DRAWRAW;
         goto hextile_drawraw;
@@ -611,24 +368,26 @@ hextile_dropraw:
 
     case HEXTILESTATE_DRAWRAW:
 hextile_drawraw:
-    
-      do
-      {
-        drawPixelsInView();
-        if( interPixelCount == 0 )
-        {
-          // increment currentdrawX and currentdrawY
-          currentDrawX = tileX;
-          currentDrawY++;
-          if( currentDrawY >= tileY+tileH)
-          {
-            hextileState = HEXTILESTATE_DONE;
-            goto hextile_done; 
-          }
-          interPixelCount = tileW * BYTES_PER_PIXEL;
-        }
-      }
-      while( dataSize >= interPixelCount );
+    if(interPixelCount > dataSize)
+    {
+        int bytesToDraw = dataSize;
+        if(dataSize % 2)
+            bytesToDraw -= 1;
+        DrawRawTile(bytesToDraw, BYTES_PER_PIXEL, dataPtr);
+        interPixelCount -= bytesToDraw;
+        dataPtr += bytesToDraw;
+        dataSize -= bytesToDraw;
+    }
+    else
+    {
+        DrawRawTile(interPixelCount, BYTES_PER_PIXEL, dataPtr);
+        dataPtr += interPixelCount;
+        dataSize -= interPixelCount;
+        interPixelCount = 0;
+
+        hextileState = HEXTILESTATE_DONE;
+        goto hextile_done;
+    }
 
       break;
 
@@ -1256,8 +1015,8 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 			//if( VNCstate == VNCSTATE_CONNECTED_REFRESH || uip_poll() )
 		    if( VNCstate == VNCSTATE_CONNECTED_REFRESH )
 			{
-                static uint8_t counter;
 #if 0
+                static uint8_t counter;
                 TransmitString("s:PREFS ");
 		        TransmitHex(counter++);
 		        TransmitByte(' ');
