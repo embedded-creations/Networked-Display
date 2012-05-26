@@ -36,6 +36,8 @@ different port or bit, change the macros below:
 
 #define USBASP_FUNC_GETCAPABILITIES 127
 
+static uchar  currentPosition, bytesRemaining;
+
 usbMsgLen_t usbFunctionSetup(uchar data[8])
 {
 usbRequest_t    *rq = (void *)data;
@@ -62,15 +64,31 @@ PORTD |= (1<<7);
         usbMsgPtr = dataBuffer;         /* tell the driver which data to return */
         return 1;                       /* tell the driver to send 1 byte */
     }else if(rq->bRequest == USBASP_FUNC_GETCAPABILITIES){
-        dataBuffer[0] = 1;
-        dataBuffer[1] = 2;
-        dataBuffer[2] = 3;
-        dataBuffer[3] = 4;
-        usbMsgPtr = dataBuffer;
-        return 4;
+        currentPosition = 0;                // initialize position index
+        bytesRemaining = rq->wLength.word;  // store the amount of data requested
+        return USB_NO_MSG;
     }
     return 0;   /* default for not implemented requests: return no data back to host */
 }
+
+uchar usbFunctionRead(uchar *data, uchar len)
+{
+    uchar i;
+
+    DDRD |= (1<<7);
+    PORTD |= (1<<7);
+
+    if(len > bytesRemaining)                // len is max chunk size
+        len = bytesRemaining;               // send an incomplete chunk
+    bytesRemaining -= len;
+    for(i = 0; i < len; i++)
+        data[i] = currentPosition++; // copy the data to the buffer
+
+    PORTD &= ~(1<<7);
+
+    return len;                             // return real chunk size
+}
+
 
 /* ------------------------------------------------------------------------- */
 

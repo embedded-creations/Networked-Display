@@ -199,13 +199,15 @@ static int usbdevice_transmit(libusb_device_handle *device,
 static int usbasp_initialize(libusb_device_handle *device)
 {
   unsigned char temp[4];
-  unsigned char res[4];
+  unsigned char res[10];
+  unsigned int length;
 
   /* get capabilities */
   memset(temp, 0, sizeof(temp));
-  if(usbdevice_transmit(device, 1, USBASP_FUNC_GETCAPABILITIES, temp, res, sizeof(res)) == 4)
+  length = usbdevice_transmit(device, 1, USBASP_FUNC_GETCAPABILITIES, temp, res, sizeof(res));
+  if(length)
   {
-      fprintf(stderr, "got %X %X %X %X", res[0], res[1], res[2], res[3]);
+      fprintf(stderr, "got %d bytes: %X %X %X %X %X %X %X %X %X %X", length, res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7], res[8], res[9]);
   }
   else
   {
