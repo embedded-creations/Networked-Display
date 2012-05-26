@@ -62,10 +62,11 @@ PORTD |= (1<<7);
         usbMsgPtr = dataBuffer;         /* tell the driver which data to return */
         return 1;                       /* tell the driver to send 1 byte */
     }else if(rq->bRequest == USBASP_FUNC_GETCAPABILITIES){
-        dataBuffer[0] = 0;
-        dataBuffer[1] = 0;
-        dataBuffer[2] = 0;
-        dataBuffer[3] = 0;
+        dataBuffer[0] = 1;
+        dataBuffer[1] = 2;
+        dataBuffer[2] = 3;
+        dataBuffer[3] = 4;
+        usbMsgPtr = dataBuffer;
         return 4;
     }
     return 0;   /* default for not implemented requests: return no data back to host */

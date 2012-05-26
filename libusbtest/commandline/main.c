@@ -26,8 +26,8 @@
 static libusb_context *ctx = NULL;
 
 /* USB identifiers */
-#define USBASP_SHARED_VID   0x16C0  /* VOTI */
-#define USBASP_SHARED_PID   0x05DC  /* Obdev's free shared PID */
+#define USBDEVICE_SHARED_VID   0x16C0  /* VOTI */
+#define USBDEVICE_SHARED_PID   0x05DC  /* Obdev's free shared PID */
 
 /* USB error identifiers */
 #define USB_ERROR_NOTFOUND  1
@@ -174,7 +174,7 @@ static int usbOpenDevice(libusb_device_handle **device, int vendor,
 #define USBASP_FUNC_GETCAPABILITIES 127
 
 
-static int usbasp_transmit(libusb_device_handle *device,
+static int usbdevice_transmit(libusb_device_handle *device,
                unsigned char receive, unsigned char functionid,
                unsigned char send[4], unsigned char * buffer, int buffersize)
 {
@@ -203,9 +203,9 @@ static int usbasp_initialize(libusb_device_handle *device)
 
   /* get capabilities */
   memset(temp, 0, sizeof(temp));
-  if(usbasp_transmit(device, 1, USBASP_FUNC_GETCAPABILITIES, temp, res, sizeof(res)) == 4)
+  if(usbdevice_transmit(device, 1, USBASP_FUNC_GETCAPABILITIES, temp, res, sizeof(res)) == 4)
   {
-      fprintf(stderr, "got %X %X %X %X", temp[0], temp[1], temp[2], temp[3]);
+      fprintf(stderr, "got %X %X %X %X", res[0], res[1], res[2], res[3]);
   }
   else
   {
@@ -217,22 +217,22 @@ static int usbasp_initialize(libusb_device_handle *device)
 
 
 /* Interface - prog. */
-static int usbasp_open(libusb_device_handle **device)
+static int usbdevice_open (libusb_device_handle **device)
 {
-  libusb_init(&ctx);
+    libusb_init(&ctx);
 
-if (usbOpenDevice(device, USBASP_SHARED_VID, "Embedded Creations",
-            USBASP_SHARED_PID, "libusbtest") != 0) {
+    if (usbOpenDevice(device, USBDEVICE_SHARED_VID, "Embedded Creations",
+            USBDEVICE_SHARED_PID, "libusbtest") != 0)
+    {
 
-      /* no USBasp found */
-      fprintf(stderr,
-          "error: could not find USB device "
-          "\"USBasp\" with vid=0x%x pid=0x%x\n",
-          USBASP_SHARED_VID, USBASP_SHARED_PID);
-      return -1;
+        /* no USBasp found */
+        fprintf(stderr, "error: could not find USB device "
+                "\"libusbtest\" with vid=0x%x pid=0x%x\n", USBDEVICE_SHARED_VID,
+                USBDEVICE_SHARED_PID);
+        return -1;
     }
 
-  return 0;
+    return 0;
 }
 
 
@@ -276,7 +276,7 @@ int main(void)
 	libusb_free_device_list(devs, 1);
 
 
-	if(!usbasp_open(&usbhandle))
+	if(!usbdevice_open(&usbhandle))
 	    usbasp_initialize(usbhandle);
 
 	libusb_exit(NULL);
