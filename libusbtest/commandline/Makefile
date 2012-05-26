@@ -5,7 +5,8 @@ EXE=libusbtest.exe
 
 CC=gcc
 CFLAGS= -Wall -O3
-LDFLAGS= -lusb-1.0
+LDFLAGS= -lusb
+#LDFLAGS= -lusb-1.0
 RM=rm
 
 %.o: %.c
