@@ -40,11 +40,14 @@ usbRequest_t    *rq = (void *)data;
 static uchar    dataBuffer[4];  /* buffer must stay valid when usbFunctionSetup returns */
 
     if(rq->bRequest == CUSTOM_RQ_ECHO){ /* echo -- used for reliability tests */
-        dataBuffer[0] = rq->wValue.bytes[0];
+DDRD |= (1<<7);
+PORTD &= ~(1<<7);
+		dataBuffer[0] = rq->wValue.bytes[0];
         dataBuffer[1] = rq->wValue.bytes[1];
         dataBuffer[2] = rq->wIndex.bytes[0];
         dataBuffer[3] = rq->wIndex.bytes[1];
         usbMsgPtr = dataBuffer;         /* tell the driver which data to return */
+PORTD |= (1<<7);
         return 4;
     }else if(rq->bRequest == CUSTOM_RQ_SET_STATUS){
         if(rq->wValue.bytes[0] & 1){    /* set LED */
