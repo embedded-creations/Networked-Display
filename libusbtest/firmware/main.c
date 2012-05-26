@@ -34,6 +34,8 @@ different port or bit, change the macros below:
 /* ----------------------------- USB interface ----------------------------- */
 /* ------------------------------------------------------------------------- */
 
+#define USBASP_FUNC_GETCAPABILITIES 127
+
 usbMsgLen_t usbFunctionSetup(uchar data[8])
 {
 usbRequest_t    *rq = (void *)data;
@@ -59,6 +61,12 @@ PORTD |= (1<<7);
         dataBuffer[0] = ((LED_PORT_OUTPUT & _BV(LED_BIT)) != 0);
         usbMsgPtr = dataBuffer;         /* tell the driver which data to return */
         return 1;                       /* tell the driver to send 1 byte */
+    }else if(rq->bRequest == USBASP_FUNC_GETCAPABILITIES){
+        dataBuffer[0] = 0;
+        dataBuffer[1] = 0;
+        dataBuffer[2] = 0;
+        dataBuffer[3] = 0;
+        return 4;
     }
     return 0;   /* default for not implemented requests: return no data back to host */
 }

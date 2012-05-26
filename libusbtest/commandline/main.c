@@ -34,7 +34,7 @@ static libusb_context *ctx = NULL;
 #define USB_ERROR_ACCESS    2
 #define USB_ERROR_IO        3
 
-char progname[] = "avrdudetest";
+char progname[] = "libusbtest";
 char verbose = 2;
 
 static int libusb_to_errno(int result)
@@ -221,8 +221,8 @@ static int usbasp_open(libusb_device_handle **device)
 {
   libusb_init(&ctx);
 
-if (usbOpenDevice(device, USBASP_SHARED_VID, "www.fischl.de",
-            USBASP_SHARED_PID, "USBasp") != 0) {
+if (usbOpenDevice(device, USBASP_SHARED_VID, "Embedded Creations",
+            USBASP_SHARED_PID, "libusbtest") != 0) {
 
       /* no USBasp found */
       fprintf(stderr,
