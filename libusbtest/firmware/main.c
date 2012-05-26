@@ -34,9 +34,10 @@ different port or bit, change the macros below:
 /* ----------------------------- USB interface ----------------------------- */
 /* ------------------------------------------------------------------------- */
 
-#define USBASP_FUNC_GETCAPABILITIES 127
-
 static uchar  currentPosition, bytesRemaining;
+
+#define READ_WRITE_BUFFER_SIZE  64
+static uchar readWriteBuffer[READ_WRITE_BUFFER_SIZE];
 
 usbMsgLen_t usbFunctionSetup(uchar data[8])
 {
@@ -63,28 +64,48 @@ PORTD |= (1<<7);
         dataBuffer[0] = ((LED_PORT_OUTPUT & _BV(LED_BIT)) != 0);
         usbMsgPtr = dataBuffer;         /* tell the driver which data to return */
         return 1;                       /* tell the driver to send 1 byte */
-    }else if(rq->bRequest == USBASP_FUNC_GETCAPABILITIES){
+    }else if(rq->bRequest == CUSTOM_RQ_TEST_READ){
+        currentPosition = 0;                // initialize position index
+        //bytesRemaining = rq->wLength.word;  // store the amount of data requested
+        //bytesRemaining = 32;    // pretend we have less data to send
+        usbMsgPtr = readWriteBuffer;
+        return 230;
+    }else if(rq->bRequest == CUSTOM_RQ_TEST_WRITE){
         currentPosition = 0;                // initialize position index
         bytesRemaining = rq->wLength.word;  // store the amount of data requested
-        return USB_NO_MSG;
+        if(bytesRemaining > sizeof(readWriteBuffer)) // limit to buffer size
+            bytesRemaining = sizeof(readWriteBuffer);
+        return USB_NO_MSG;        // tell driver to use usbFunctionWrite()
     }
     return 0;   /* default for not implemented requests: return no data back to host */
+}
+
+uchar usbFunctionWrite(uchar *data, uchar len)
+{
+    DDRD |= (1<<7);
+    PORTD |= (1<<7);
+
+    uchar i;
+    if(len > bytesRemaining)                // if this is the last incomplete chunk
+        len = bytesRemaining;               // limit to the amount we can store
+    bytesRemaining -= len;
+    for(i = 0; i < len; i++)
+        readWriteBuffer[currentPosition++] = data[i];
+
+    PORTD &= ~(1<<7);
+
+    return bytesRemaining == 0;             // return 1 if we have all data
 }
 
 uchar usbFunctionRead(uchar *data, uchar len)
 {
     uchar i;
 
-    DDRD |= (1<<7);
-    PORTD |= (1<<7);
-
     if(len > bytesRemaining)                // len is max chunk size
         len = bytesRemaining;               // send an incomplete chunk
     bytesRemaining -= len;
     for(i = 0; i < len; i++)
-        data[i] = currentPosition++; // copy the data to the buffer
-
-    PORTD &= ~(1<<7);
+        data[i] = readWriteBuffer[currentPosition++]; // copy the data to the buffer
 
     return len;                             // return real chunk size
 }

@@ -154,25 +154,8 @@ static int usbOpenDevice(libusb_device_handle **device, int vendor,
     return errorCode;
 }
 
-/* USB function call identifiers */
-#define USBASP_FUNC_CONNECT    1
-#define USBASP_FUNC_DISCONNECT 2
-#define USBASP_FUNC_TRANSMIT   3
-#define USBASP_FUNC_READFLASH  4
-#define USBASP_FUNC_ENABLEPROG 5
-#define USBASP_FUNC_WRITEFLASH 6
-#define USBASP_FUNC_READEEPROM 7
-#define USBASP_FUNC_WRITEEEPROM 8
-#define USBASP_FUNC_SETLONGADDRESS 9
-#define USBASP_FUNC_SETISPSCK 10
-#define USBASP_FUNC_TPI_CONNECT      11
-#define USBASP_FUNC_TPI_DISCONNECT   12
-#define USBASP_FUNC_TPI_RAWREAD      13
-#define USBASP_FUNC_TPI_RAWWRITE     14
-#define USBASP_FUNC_TPI_READBLOCK    15
-#define USBASP_FUNC_TPI_WRITEBLOCK   16
-#define USBASP_FUNC_GETCAPABILITIES 127
-
+#define CUSTOM_RQ_TEST_READ     3
+#define CUSTOM_RQ_TEST_WRITE    4
 
 static int usbdevice_transmit(libusb_device_handle *device,
                unsigned char receive, unsigned char functionid,
@@ -195,19 +178,50 @@ static int usbdevice_transmit(libusb_device_handle *device,
 }
 
 
-/* Universal functions: for both SPI and TPI */
+static int testWrite(libusb_device_handle *device)
+{
+  unsigned char temp[4];
+  unsigned char res[64];
+
+  /* get capabilities */
+  memset(temp, 0, sizeof(temp));
+
+  int i;
+  for(i=0; i<64; i++)
+  {
+      res[i] = 64-i;
+  }
+
+  int length = usbdevice_transmit(device, 0, CUSTOM_RQ_TEST_WRITE, temp, res, sizeof(res));
+  if(length == 64)
+  {
+      fprintf(stderr, "sent successfully");
+  }
+  else
+  {
+      fprintf(stderr, "send fail %d", length);
+  }
+
+  return 0;
+}
+
 static int usbasp_initialize(libusb_device_handle *device)
 {
   unsigned char temp[4];
-  unsigned char res[10];
+  unsigned char res[230];
   unsigned int length;
 
   /* get capabilities */
   memset(temp, 0, sizeof(temp));
-  length = usbdevice_transmit(device, 1, USBASP_FUNC_GETCAPABILITIES, temp, res, sizeof(res));
+  length = usbdevice_transmit(device, 1, CUSTOM_RQ_TEST_READ, temp, res, sizeof(res));
   if(length)
   {
-      fprintf(stderr, "got %d bytes: %X %X %X %X %X %X %X %X %X %X", length, res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7], res[8], res[9]);
+      fprintf(stderr, "got %d bytes:", length);
+      int i;
+      for(i=0; i<length; i++)
+      {
+          fprintf(stderr, " %2X", res[i]);
+      }
   }
   else
   {
@@ -279,7 +293,10 @@ int main(void)
 
 
 	if(!usbdevice_open(&usbhandle))
-	    usbasp_initialize(usbhandle);
+	{
+	    testWrite(usbhandle);
+        usbasp_initialize(usbhandle);
+	}
 
 	libusb_exit(NULL);
 	return 0;

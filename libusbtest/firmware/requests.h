@@ -33,4 +33,9 @@
  * the current status to the host. The status is in bit 0 of the byte.
  */
 
+#define CUSTOM_RQ_TEST_READ     3
+
+#define CUSTOM_RQ_TEST_WRITE    4
+
+
 #endif /* __REQUESTS_H_INCLUDED__ */
