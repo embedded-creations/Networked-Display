@@ -154,6 +154,67 @@ static int usbOpenDevice(libusb_device_handle **device, int vendor,
     return errorCode;
 }
 
+/* USB function call identifiers */
+#define USBASP_FUNC_CONNECT    1
+#define USBASP_FUNC_DISCONNECT 2
+#define USBASP_FUNC_TRANSMIT   3
+#define USBASP_FUNC_READFLASH  4
+#define USBASP_FUNC_ENABLEPROG 5
+#define USBASP_FUNC_WRITEFLASH 6
+#define USBASP_FUNC_READEEPROM 7
+#define USBASP_FUNC_WRITEEEPROM 8
+#define USBASP_FUNC_SETLONGADDRESS 9
+#define USBASP_FUNC_SETISPSCK 10
+#define USBASP_FUNC_TPI_CONNECT      11
+#define USBASP_FUNC_TPI_DISCONNECT   12
+#define USBASP_FUNC_TPI_RAWREAD      13
+#define USBASP_FUNC_TPI_RAWWRITE     14
+#define USBASP_FUNC_TPI_READBLOCK    15
+#define USBASP_FUNC_TPI_WRITEBLOCK   16
+#define USBASP_FUNC_GETCAPABILITIES 127
+
+
+static int usbasp_transmit(libusb_device_handle *device,
+               unsigned char receive, unsigned char functionid,
+               unsigned char send[4], unsigned char * buffer, int buffersize)
+{
+  int nbytes;
+  nbytes = libusb_control_transfer(device,
+                   (LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE | (receive << 7)) & 0xff,
+                   functionid & 0xff,
+                   ((send[1] << 8) | send[0]) & 0xffff,
+                   ((send[3] << 8) | send[2]) & 0xffff,
+                   (unsigned char *)buffer,
+                   buffersize & 0xffff,
+                   5000);
+  if(nbytes < 0){
+    fprintf(stderr, "%s: error: usbasp_transmit: %s\n", progname, strerror(libusb_to_errno(nbytes)));
+    return -1;
+  }
+  return nbytes;
+}
+
+
+/* Universal functions: for both SPI and TPI */
+static int usbasp_initialize(libusb_device_handle *device)
+{
+  unsigned char temp[4];
+  unsigned char res[4];
+
+  /* get capabilities */
+  memset(temp, 0, sizeof(temp));
+  if(usbasp_transmit(device, 1, USBASP_FUNC_GETCAPABILITIES, temp, res, sizeof(res)) == 4)
+  {
+      fprintf(stderr, "got %X %X %X %X", temp[0], temp[1], temp[2], temp[3]);
+  }
+  else
+  {
+      fprintf(stderr, "no capabilities");
+  }
+
+  return 0;
+}
+
 
 /* Interface - prog. */
 static int usbasp_open(libusb_device_handle **device)
@@ -215,7 +276,8 @@ int main(void)
 	libusb_free_device_list(devs, 1);
 
 
-	usbasp_open(&usbhandle);
+	if(!usbasp_open(&usbhandle))
+	    usbasp_initialize(usbhandle);
 
 	libusb_exit(NULL);
 	return 0;
