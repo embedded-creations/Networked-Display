@@ -11,6 +11,8 @@
 #define DD_RES  PB5
 
 
+
+
 void SPI_MasterTransmit (char cData)
 {
     /* Start transmission */
@@ -33,6 +35,8 @@ void SetupLcd(void)
     // set SCK frequency = fosc/2
     SPSR = (1 << SPI2X);
 }
+
+
 
 
 void write_command (uint8_t c)
@@ -294,4 +298,9 @@ void DrawHextile(unsigned char tileW, unsigned char tileH, unsigned char bytes_p
     }
 }
 
-
+void VncDisplay_Init(void)
+{
+    SetupLcd();
+    lcd_initial();
+    ClearDisplay();
+}

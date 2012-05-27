@@ -856,3 +856,8 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
     }
     return 0;
 }
+
+void Vnc_Init(void)
+{
+    VncDisplay_Init();
+}

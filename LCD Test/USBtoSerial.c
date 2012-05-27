@@ -94,6 +94,7 @@ int main(void)
     unsigned int vncResponseSize = 0;
 
     SetupHardware();
+    Vnc_Init();
 
     RingBuffer_InitBuffer(&USBtoUSART_Buffer, USBtoUSART_Buffer_Data, sizeof(USBtoUSART_Buffer_Data));
     RingBuffer_InitBuffer(&USARTtoUSB_Buffer, USARTtoUSB_Buffer_Data, sizeof(USARTtoUSB_Buffer_Data));
@@ -212,10 +213,6 @@ void SetupHardware(void)
 
     /* Start the flush timer so that overflows occur rapidly to push received bytes to the USB interface */
     TCCR0B = (1 << CS02);
-
-    SetupLcd();
-    lcd_initial();
-    ClearDisplay();
 }
 
 /** Event handler for the library USB Connection event. */

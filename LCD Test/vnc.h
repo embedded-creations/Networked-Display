@@ -30,6 +30,7 @@
 unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length);
 unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer);
 void Vnc_ResetSystem(void);
+void Vnc_Init(void);
 
 
 #define RAW_DECODING 0
