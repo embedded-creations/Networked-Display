@@ -172,20 +172,21 @@ void Vnc_ResetSystem(void)
 int dropOutOfViewPixels(void)
 {
     // clear the rest of the pixels out of the receive buffer
-    if( (dataSize >= interPixelCount) )
+    if( (dataSize >= interPixelCount * BYTES_PER_PIXEL) )
     {
-        dataPtr += interPixelCount;
-        dataSize -= interPixelCount;
+        dataPtr += interPixelCount * BYTES_PER_PIXEL;
+        dataSize -= interPixelCount * BYTES_PER_PIXEL;
         interPixelCount = 0;
         return 1;
     }
 
     // clear out the receive buffer - more pixels in transit
-    if( (interPixelCount > dataSize) && (dataSize != 0) )
+    if( (interPixelCount * BYTES_PER_PIXEL > dataSize) && (dataSize != 0) )
     {
-        dataPtr += dataSize;
-        interPixelCount-=dataSize;
-        dataSize = 0;
+        int pixelsToRemove = dataSize/BYTES_PER_PIXEL;
+        dataPtr += pixelsToRemove * BYTES_PER_PIXEL;
+        dataSize -= pixelsToRemove * BYTES_PER_PIXEL;
+        interPixelCount -= pixelsToRemove;
     }
 
     return 0;
@@ -314,12 +315,12 @@ int processHextile(void)
         if( tileX < windowX0 || (tileX + tileW) > windowX1 || tileY < windowY0
             || (tileY + tileH) > windowY1 )
         {
-          interPixelCount = tileW * tileH * BYTES_PER_PIXEL;
+          interPixelCount = tileW * tileH;
           hextileState = HEXTILESTATE_DROPRAW;
           return 1;
         }
         
-        interPixelCount = tileW * tileH * BYTES_PER_PIXEL;
+        interPixelCount = tileW * tileH;
 
         SetupTile(tileX, tileY, tileW, tileH);
 
@@ -382,21 +383,19 @@ int processHextile(void)
 
 
     case HEXTILESTATE_DRAWRAW:
-    if(interPixelCount > dataSize)
+    if(interPixelCount * BYTES_PER_PIXEL > dataSize)
     {
-        int bytesToDraw = dataSize;
-        if(dataSize % 2)
-            bytesToDraw -= 1;
-        DrawRawTile(bytesToDraw, BYTES_PER_PIXEL, dataPtr);
-        interPixelCount -= bytesToDraw;
-        dataPtr += bytesToDraw;
-        dataSize -= bytesToDraw;
+        int pixelsToDraw = dataSize / BYTES_PER_PIXEL;
+        DrawRawTile(pixelsToDraw, BYTES_PER_PIXEL, dataPtr);
+        interPixelCount -= pixelsToDraw;
+        dataPtr += pixelsToDraw * BYTES_PER_PIXEL;
+        dataSize -= pixelsToDraw * BYTES_PER_PIXEL;
     }
     else
     {
         DrawRawTile(interPixelCount, BYTES_PER_PIXEL, dataPtr);
-        dataPtr += interPixelCount;
-        dataSize -= interPixelCount;
+        dataPtr += interPixelCount * BYTES_PER_PIXEL;
+        dataSize -= interPixelCount * BYTES_PER_PIXEL;
         interPixelCount = 0;
 
         hextileState = HEXTILESTATE_DONE;
@@ -476,7 +475,8 @@ int processHextile(void)
             return 1;
         }
 
-        DrawHextile(tileX, tileY, tileW, tileH, BYTES_PER_PIXEL, hextileBuffer);
+        SetupTile(tileX, tileY, tileW, tileH);
+        DrawHextile(tileW, tileH, BYTES_PER_PIXEL, hextileBuffer);
 
         hextileState = HEXTILESTATE_DONE ;
         return 1;
@@ -565,7 +565,6 @@ int pixelProcessor(void)
                 return 0;
             }
             break;
-
 
         case VNCPPSTATE_OUTBOUNDS:
             // drop all pixels in the current rectangle
@@ -690,7 +689,6 @@ int Vnc_StateMachine(void)
                 TransmitHex(interPixelCount/256);
                 TransmitHex(interPixelCount);
                 TransmitString(" ");
-
 
                 TransmitString("name:");
                 for(int i=0; i<interPixelCount; i++)
@@ -858,65 +856,3 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
     }
     return 0;
 }
-
-#if 0
-void vnc_app(void)
-{
-    unsigned char transmitSpace = 1;
-
-    // check for connection status - if closed return - reconnect later
-    if( uip_closed() )
-    {
-        TransmitByte('X');
-        TransmitByte('C');
-        return;
-    }
-
-    if( uip_aborted() )
-    {
-        TransmitByte('X');
-        TransmitByte('A');
-        return;
-    }
-
-    if( uip_timedout() )
-    {
-        TransmitByte('X');
-        TransmitByte('T');
-        return;
-    }
-
-    // call processing function
-    processNewdata();
-
-    // clear out the uIP data buffer
-    uip_len = 0;
-
-    // check for retransmit - send the last packet again
-    if( uip_rexmit() )
-    {
-        TransmitString("NAK");
-
-        // call transmit function with the previous state
-        sendMessage(VNCsendState-1);
-
-        // can't do anything more
-        return;
-    }
-
-
-    // check for space in the buffer - send packet
-    if( uip_acked() || transmitSpace)
-    {
-        transmitSpace = 1;
-        uip_reset_acked();
-
-        // call transmit function
-        sendMessage(VNCsendState);
-
-        // if something was sent, the transmit buffer is now full
-        if( uip_len )
-            transmitSpace = 0;
-    }
-}
-#endif
