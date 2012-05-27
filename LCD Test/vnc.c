@@ -95,8 +95,8 @@ prog_uchar versionMessage[] = "RFB 003.003\n";
 // random key, so the result will always be the same when using the same
 // password.  The word below corresponds to a password of "asdf"
 prog_uchar VNCauthWord[] =
-	{ 0x54, 0x44, 0xC7, 0x4E, 0xDE, 0xDC, 0x8C, 0xDF,
-	  0x97, 0xB6, 0x51, 0x93, 0x04, 0xD9, 0x9E, 0x90 };
+    { 0x54, 0x44, 0xC7, 0x4E, 0xDE, 0xDC, 0x8C, 0xDF,
+      0x97, 0xB6, 0x51, 0x93, 0x04, 0xD9, 0x9E, 0x90 };
 
 #define SCREEN_WIDTH    128
 #define SCREEN_HEIGHT   160
@@ -114,7 +114,7 @@ prog_uchar encodingTypeMessage[] = VNC_ENCODING_TYPE_HEXTILE_AND_COPYRECT;
 
 
 
-	  
+
 // counters used to keep track of how many pixels and rectangles to go before
 // the frameupdate is complete
 static unsigned int rectangleCount;
@@ -170,22 +170,22 @@ void Vnc_ResetSystem(void)
 //  or as many as are currently in the buffer
 void dropOutOfViewPixels(void)
 {
-	// clear the rest of the pixels out of the receive buffer
-	if( (dataSize >= interPixelCount) )
-	{
-		dataPtr += interPixelCount;
-		dataSize -= interPixelCount;
-		interPixelCount = 0;
-		return;
-	}
-	
-	// clear out the receive buffer - more pixels in transit
-	if( (interPixelCount > dataSize) && (dataSize != 0) )
-	{
-		dataPtr += dataSize;
-		interPixelCount-=dataSize;
-		dataSize = 0;
-	}
+    // clear the rest of the pixels out of the receive buffer
+    if( (dataSize >= interPixelCount) )
+    {
+        dataPtr += interPixelCount;
+        dataSize -= interPixelCount;
+        interPixelCount = 0;
+        return;
+    }
+
+    // clear out the receive buffer - more pixels in transit
+    if( (interPixelCount > dataSize) && (dataSize != 0) )
+    {
+        dataPtr += dataSize;
+        interPixelCount-=dataSize;
+        dataSize = 0;
+    }
 }
 
 
@@ -347,7 +347,7 @@ hextile_parseheader:
 
       if( subencodingByte & HEXTILE_SUBRECT_MASK )
       {
-		//TransmitByte('S');
+        //TransmitByte('S');
         numSubrects = *dataPtr++;
         dataSize--;
       }
@@ -412,7 +412,7 @@ hextile_drawraw:
     case HEXTILESTATE_FILLBUFFER:
 hextile_fillbuffer:
 
-	  // draw all the subrectangles to the buffer
+      // draw all the subrectangles to the buffer
       while( numSubrects != 0 )
       {
         rectangleColor = foreground;
@@ -551,134 +551,134 @@ hextile_fillbuffer:
     DrawHextile(tileX, tileY, tileW, tileH, BYTES_PER_PIXEL, hextileBuffer);
 
 #if 0
-	// compute the offset of the hextileBuffer from the 8-pixel SED1330 columns
+    // compute the offset of the hextileBuffer from the 8-pixel SED1330 columns
     temp1 = tileX & 0x07;
 
-	// shift the buffer by the offset
-	for( i=0; i<tileH; i++ )
-	{
-	  byte  = hextileBuffer[0][i];
-	  temp2 = hextileBuffer[1][i];
-	  temp3 = hextileBuffer[2][i];
-	  for(j=0; j<temp1; j++)
-	  {
-	    // shift the row once to the right, spanning all three columns
-	    asm volatile("lsr %0" "\n\t"
-	                 "ror %1" "\n\t"
-	                 "ror %2" "\n\t"
-	                 : "=r" (byte),
-	                   "=r" (temp2),
-	                   "=r" (temp3)
-	                 : "r" (temp3),
-	                   "r" (temp2),
-	                   "r" (byte) );
-	  }
-	  
-	  hextileBuffer[0][i] = byte;
-	  hextileBuffer[1][i] = temp2;
-	  hextileBuffer[2][i] = temp3;
-	}
+    // shift the buffer by the offset
+    for( i=0; i<tileH; i++ )
+    {
+      byte  = hextileBuffer[0][i];
+      temp2 = hextileBuffer[1][i];
+      temp3 = hextileBuffer[2][i];
+      for(j=0; j<temp1; j++)
+      {
+        // shift the row once to the right, spanning all three columns
+        asm volatile("lsr %0" "\n\t"
+                     "ror %1" "\n\t"
+                     "ror %2" "\n\t"
+                     : "=r" (byte),
+                       "=r" (temp2),
+                       "=r" (temp3)
+                     : "r" (temp3),
+                       "r" (temp2),
+                       "r" (byte) );
+      }
+
+      hextileBuffer[0][i] = byte;
+      hextileBuffer[1][i] = temp2;
+      hextileBuffer[2][i] = temp3;
+    }
 
     
     
 
-	// draw the three columns to the display    
-	for( j=0; j<3; j++)
-	{
-	    // create a mask for the column
-	    temp2 = 0x00;
-	    byte = 0x80;
-	    
-		// the first column may not start on an 8-pixel boundary, the others will
-		if(j==0)
-		{
-		    for(i=0; i<8; i++)
-		    { 
-		      if( i >= (tileW+temp1))
-		        break;
-		       
-		      if(i >= temp1)
-		        temp2 |= byte;
-		        
-		      byte>>=1;
-		    }
-		}
-		else
-		{
-		    for(i=0; i<8; i++)
-		    { 
-		      if( i >= (tileW+temp1-(j*8)))
-		        break;
-		
-		      temp2 |= byte;
-		        
-		      byte>>=1;
-		    }
-		}
-	
-		// a mask of 0x00 means there is no data to draw to the display
-		// a mask of 0xFF means all the existing display data will be overwritten
-		
-	    // if mask != 0x00 or 0xFF, read in from top-bottom and update buffer
-	    if( (temp2 != 0x00) && (temp2 != 0xFF) )
-	    {
-	      // set address and cursor direction to down
-		  *COMMAND_ADDRESS = CSRDIR_DOWN_COMMAND ;
-	      
-	      writeAddress = (tileX >> 3) + j
-		               + (unsigned int)( tileY * ( 256/8 ) ) ;
-	
-	      
-	      *COMMAND_ADDRESS = CSRW_COMMAND ;
-		  *READWRITE_ADDRESS = (unsigned char)writeAddress ;
-		  *READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;	
-	      
-		  *COMMAND_ADDRESS = READ_COMMAND ;
-		  
-	      for( i=0; i<tileH; i++ )
-	      {
-	        hextileBuffer[j][i] &= temp2;
-	        hextileBuffer[j][i] |= (~temp2 & *COMMAND_ADDRESS);
-	      }
-	      
-	      *COMMAND_ADDRESS = CSRDIR_RIGHT_COMMAND ;
-	    }
-	    
-	    // if mask != 0x00, write to display from top-bottom
-	    if( temp2 != 0x00 )
-	    {
-	      // set address and cursor direction to down
-		  *COMMAND_ADDRESS = CSRDIR_DOWN_COMMAND ;
-	      
-	      writeAddress = (tileX >> 3) + j
-		               + (unsigned int)( tileY * ( 256/8 ) ) ;
-	
-	      
-	      *COMMAND_ADDRESS = CSRW_COMMAND ;
-		  *READWRITE_ADDRESS = (unsigned char)writeAddress ;
-		  *READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;	
-	      
-		  *COMMAND_ADDRESS = WRITE_COMMAND ;
-		  
-	      for( i=0; i<tileH; i++ )
-	      {
-	        // buffer[0][i] = displaybyte & mask
-	        	*READWRITE_ADDRESS = hextileBuffer[j][i] ;
-	      }
-	      
-	      *COMMAND_ADDRESS = CSRDIR_RIGHT_COMMAND ;
-	    
-	    }
-	  }
+    // draw the three columns to the display
+    for( j=0; j<3; j++)
+    {
+        // create a mask for the column
+        temp2 = 0x00;
+        byte = 0x80;
+
+        // the first column may not start on an 8-pixel boundary, the others will
+        if(j==0)
+        {
+            for(i=0; i<8; i++)
+            {
+              if( i >= (tileW+temp1))
+                break;
+
+              if(i >= temp1)
+                temp2 |= byte;
+
+              byte>>=1;
+            }
+        }
+        else
+        {
+            for(i=0; i<8; i++)
+            {
+              if( i >= (tileW+temp1-(j*8)))
+                break;
+
+              temp2 |= byte;
+
+              byte>>=1;
+            }
+        }
+
+        // a mask of 0x00 means there is no data to draw to the display
+        // a mask of 0xFF means all the existing display data will be overwritten
+
+        // if mask != 0x00 or 0xFF, read in from top-bottom and update buffer
+        if( (temp2 != 0x00) && (temp2 != 0xFF) )
+        {
+          // set address and cursor direction to down
+          *COMMAND_ADDRESS = CSRDIR_DOWN_COMMAND ;
+
+          writeAddress = (tileX >> 3) + j
+                       + (unsigned int)( tileY * ( 256/8 ) ) ;
+
+
+          *COMMAND_ADDRESS = CSRW_COMMAND ;
+          *READWRITE_ADDRESS = (unsigned char)writeAddress ;
+          *READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;
+
+          *COMMAND_ADDRESS = READ_COMMAND ;
+
+          for( i=0; i<tileH; i++ )
+          {
+            hextileBuffer[j][i] &= temp2;
+            hextileBuffer[j][i] |= (~temp2 & *COMMAND_ADDRESS);
+          }
+
+          *COMMAND_ADDRESS = CSRDIR_RIGHT_COMMAND ;
+        }
+
+        // if mask != 0x00, write to display from top-bottom
+        if( temp2 != 0x00 )
+        {
+          // set address and cursor direction to down
+          *COMMAND_ADDRESS = CSRDIR_DOWN_COMMAND ;
+
+          writeAddress = (tileX >> 3) + j
+                       + (unsigned int)( tileY * ( 256/8 ) ) ;
+
+
+          *COMMAND_ADDRESS = CSRW_COMMAND ;
+          *READWRITE_ADDRESS = (unsigned char)writeAddress ;
+          *READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;
+
+          *COMMAND_ADDRESS = WRITE_COMMAND ;
+
+          for( i=0; i<tileH; i++ )
+          {
+            // buffer[0][i] = displaybyte & mask
+                *READWRITE_ADDRESS = hextileBuffer[j][i] ;
+          }
+
+          *COMMAND_ADDRESS = CSRDIR_RIGHT_COMMAND ;
+
+        }
+      }
 #endif
-	    
-	  hextileState = HEXTILESTATE_DONE ;
-	  goto hextile_done; 
-	    
+
+      hextileState = HEXTILESTATE_DONE ;
+      goto hextile_done;
+
 
     default:
-	  break;
-	  
+      break;
+
     }
 }
 
@@ -690,89 +690,89 @@ hextile_fillbuffer:
 // FramebufferUpdate group have been processed and drawn or discarded
 void pixelProcessor(void)
 {
-	switch(VNCpixelProcessorState)
-	{
-		case VNCPPSTATE_IDLE:
-		vncppstate_idle:
-			// done? - quit
-			if( !(rectangleCount) )
-			{
-				VNCstate = VNCSTATE_CONNECTED_REFRESH;
-				return;
-			}
-			
-			// read rectangle header
-			if( dataSize < 12 )
-				return;
+    switch(VNCpixelProcessorState)
+    {
+        case VNCPPSTATE_IDLE:
+        vncppstate_idle:
+            // done? - quit
+            if( !(rectangleCount) )
+            {
+                VNCstate = VNCSTATE_CONNECTED_REFRESH;
+                return;
+            }
 
-			rectangleCount--;
-			
-			updateWindowX0 = (dataPtr[0]<<8) + dataPtr[1];
-			updateWindowX1 = updateWindowX0 + (dataPtr[4]<<8) + dataPtr[5];
-			
-			updateWindowY0 = (dataPtr[2]<<8) + dataPtr[3];
-			updateWindowY1 = updateWindowY0 + (dataPtr[6]<<8) + dataPtr[7];
-			
-			// check for bad encoding
-			if( dataPtr[8] != 0x00 	|| dataPtr[9] != 0x00 ||
-				dataPtr[10] != 0x00 )
-			{
-			  TransmitByte('R');
-			  return;
-			}
-			
-			// get the encoding type
-			switch( dataPtr[11] )
-			{
-			  case 0:  // raw
+            // read rectangle header
+            if( dataSize < 12 )
+                return;
+
+            rectangleCount--;
+
+            updateWindowX0 = (dataPtr[0]<<8) + dataPtr[1];
+            updateWindowX1 = updateWindowX0 + (dataPtr[4]<<8) + dataPtr[5];
+
+            updateWindowY0 = (dataPtr[2]<<8) + dataPtr[3];
+            updateWindowY1 = updateWindowY0 + (dataPtr[6]<<8) + dataPtr[7];
+
+            // check for bad encoding
+            if( dataPtr[8] != 0x00  || dataPtr[9] != 0x00 ||
+                dataPtr[10] != 0x00 )
+            {
+              TransmitByte('R');
+              return;
+            }
+
+            // get the encoding type
+            switch( dataPtr[11] )
+            {
+              case 0:  // raw
                 goto decodeRaw;
-			    break;
+                break;
 
-			  case 1:  // CopyRect
-			      goto decodeCopyRect;
-			      break;
-			    
-			  case 5:  // hextile
-			    goto decodeHextile;
-			    break;
-			    
-			  default:
-			    TransmitByte('R');
-			    return;
-			}
+              case 1:  // CopyRect
+                  goto decodeCopyRect;
+                  break;
+
+              case 5:  // hextile
+                goto decodeHextile;
+                break;
+
+              default:
+                TransmitByte('R');
+                return;
+            }
 
             
 decodeRaw:
-			// if anything raw is received, drop all the pixels and continue
-			
-			interPixelCount = ((dataPtr[4]<<8) + dataPtr[5]) ;
-			interPixelCount *= ((dataPtr[6]<<8) + dataPtr[7]);
-			
-			dataPtr += 12;
-			dataSize -= 12;
-			
-			VNCpixelProcessorState = VNCPPSTATE_OUTBOUNDS ;
+            // if anything raw is received, drop all the pixels and continue
 
-			return;
-			
-			
+            interPixelCount = ((dataPtr[4]<<8) + dataPtr[5]) ;
+            interPixelCount *= ((dataPtr[6]<<8) + dataPtr[7]);
+
+            dataPtr += 12;
+            dataSize -= 12;
+
+            VNCpixelProcessorState = VNCPPSTATE_OUTBOUNDS ;
+
+            return;
+
+
 decodeHextile:
 
-			dataPtr += 12;
-			dataSize -= 12;
-			
-			VNCpixelProcessorState = VNCPPSTATE_HEXTILE;
-			hextileState = HEXTILESTATE_INIT;
-			
-			processHextile();
+            dataPtr += 12;
+            dataSize -= 12;
 
-  			if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
-  			{
-		    	//TransmitByte('H');
-		    	goto vncppstate_idle;
-		  	}
-				
-            return;			
+            VNCpixelProcessorState = VNCPPSTATE_HEXTILE;
+            hextileState = HEXTILESTATE_INIT;
+
+            processHextile();
+
+            if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
+            {
+                //TransmitByte('H');
+                goto vncppstate_idle;
+            }
+
+            return;
 
 decodeCopyRect:
             dataPtr += 12;
@@ -789,360 +789,357 @@ decodeCopyRect:
 
             return;
 
-		case VNCPPSTATE_OUTBOUNDS:
-			// drop all pixels in the current rectangle
-			dropOutOfViewPixels();
-			
-			// when finished, go back to the idle state
-			if( interPixelCount == 0)
-			{
-				VNCpixelProcessorState = VNCPPSTATE_IDLE;
-					TransmitByte('O');
+        case VNCPPSTATE_OUTBOUNDS:
+            // drop all pixels in the current rectangle
+            dropOutOfViewPixels();
 
-				goto vncppstate_idle;
-			}
-			break;
-			
+            // when finished, go back to the idle state
+            if( interPixelCount == 0)
+            {
+                VNCpixelProcessorState = VNCPPSTATE_IDLE;
+                    TransmitByte('O');
 
-		case VNCPPSTATE_HEXTILE:
-		  processHextile();
-		  
-		  if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
-		  {
-		      goto vncppstate_idle;
-		  }
-		  break;
+                goto vncppstate_idle;
+            }
+            break;
 
-		case VNCPPSTATE_COPYRECT:
-		  processCopyRect();
 
-		  if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
+        case VNCPPSTATE_HEXTILE:
+          processHextile();
+
+          if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
+          {
+              goto vncppstate_idle;
+          }
+          break;
+
+        case VNCPPSTATE_COPYRECT:
+          processCopyRect();
+
+          if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
           {
               goto vncppstate_idle;
           }
           break;
 
 
-		default:
-			// shouldn't be here
-			break;
-	}
+        default:
+            // shouldn't be here
+            break;
+    }
 }
 
 
 unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length)
 {
-	// init pointer to appdata - remainder
-	dataPtr = buffer;
-	
-	// init total to appdata + remainder
-	dataSize = length;
+    // init pointer to appdata - remainder
+    dataPtr = buffer;
 
-	do {
-		switch(VNCstate)
-		{
-			case VNCSTATE_NOTCONNECTED:
-				if( dataSize >= 12 )
-				{
-					VNCstate = VNCSTATE_WAITFORAUTHTYPE;
-					dataPtr += 12;
-					dataSize -= 12;
-				}
-				break;
-				
-			case VNCSTATE_WAITFORAUTHTYPE:
-				if( dataSize >= 4 )
-				{
-					if( dataPtr[3] == 0x02 )
-						VNCstate = VNCSTATE_WAITFORVNCAUTHWORD;
-					// no authentication
-					else if( dataPtr[3] == 0x01 )
+    // init total to appdata + remainder
+    dataSize = length;
+
+    do {
+        switch(VNCstate)
+        {
+            case VNCSTATE_NOTCONNECTED:
+                if( dataSize >= 12 )
+                {
+                    VNCstate = VNCSTATE_WAITFORAUTHTYPE;
+                    dataPtr += 12;
+                    dataSize -= 12;
+                }
+                break;
+
+            case VNCSTATE_WAITFORAUTHTYPE:
+                if( dataSize >= 4 )
+                {
+                    if( dataPtr[3] == 0x02 )
+                        VNCstate = VNCSTATE_WAITFORVNCAUTHWORD;
+                    // no authentication
+                    else if( dataPtr[3] == 0x01 )
                     {
                         TransmitString("noauth");
-					    VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
+                        VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
                         VNCstate = VNCSTATE_SENTCLIENTINITMESSAGE;
                     }
-					else VNCstate = VNCSTATE_AUTHFAILED;
-					
-					dataPtr += 4;
-					dataSize -= 4;
-				}
-				break;
-		
-			case VNCSTATE_WAITFORVNCAUTHWORD:
-				if( dataSize >= 16 )
-				{
-					VNCstate = VNCSTATE_WAITFORVNCAUTHRESPONSE;
-					dataPtr += 16;	
-					dataSize -= 16;
-				}
-				break;
-			
-			case VNCSTATE_WAITFORVNCAUTHRESPONSE:
-				if( dataSize >= 4 )
-				{
-					if( dataPtr[3] == 0x00 )
-						VNCstate = VNCSTATE_SENTCLIENTINITMESSAGE;
-					else VNCstate = VNCSTATE_AUTHFAILED;
-					dataPtr += 4;
-					dataSize -= 4;
-				}
-				break;
-		
-			case VNCSTATE_SENTCLIENTINITMESSAGE:
-				if( dataSize >= 24 )
-				{
-					// ignore framebuffer-width/height, pixel-format
+                    else VNCstate = VNCSTATE_AUTHFAILED;
 
-				    // use interPixelCount to keep track of the name length
-					interPixelCount = dataPtr[20];
-					interPixelCount <<= 8;
-					interPixelCount |= dataPtr[21];
-					interPixelCount <<= 8;
-					interPixelCount |= dataPtr[22];
-					interPixelCount <<= 8;
-					interPixelCount |= dataPtr[23];
-					
-					VNCstate = VNCSTATE_WAITFORSERVERNAME;
-					dataPtr += 24;
-					dataSize -= 24;
+                    dataPtr += 4;
+                    dataSize -= 4;
+                }
+                break;
+
+            case VNCSTATE_WAITFORVNCAUTHWORD:
+                if( dataSize >= 16 )
+                {
+                    VNCstate = VNCSTATE_WAITFORVNCAUTHRESPONSE;
+                    dataPtr += 16;
+                    dataSize -= 16;
+                }
+                break;
+
+            case VNCSTATE_WAITFORVNCAUTHRESPONSE:
+                if( dataSize >= 4 )
+                {
+                    if( dataPtr[3] == 0x00 )
+                        VNCstate = VNCSTATE_SENTCLIENTINITMESSAGE;
+                    else VNCstate = VNCSTATE_AUTHFAILED;
+                    dataPtr += 4;
+                    dataSize -= 4;
+                }
+                break;
+
+            case VNCSTATE_SENTCLIENTINITMESSAGE:
+                if( dataSize >= 24 )
+                {
+                    // ignore framebuffer-width/height, pixel-format
+
+                    // use interPixelCount to keep track of the name length
+                    interPixelCount = dataPtr[20];
+                    interPixelCount <<= 8;
+                    interPixelCount |= dataPtr[21];
+                    interPixelCount <<= 8;
+                    interPixelCount |= dataPtr[22];
+                    interPixelCount <<= 8;
+                    interPixelCount |= dataPtr[23];
+
+                    VNCstate = VNCSTATE_WAITFORSERVERNAME;
+                    dataPtr += 24;
+                    dataSize -= 24;
 
                     TransmitString("ipc:");
                     TransmitHex(interPixelCount/256);
                     TransmitHex(interPixelCount);
                     TransmitString(" ");
-				}
-				break;
-		
-			case VNCSTATE_WAITFORSERVERNAME:
-				if( dataSize >= interPixelCount)
-				{
+                }
+                break;
+
+            case VNCSTATE_WAITFORSERVERNAME:
+                if( dataSize >= interPixelCount)
+                {
                     TransmitString("ipc:");
                     TransmitHex(interPixelCount/256);
                     TransmitHex(interPixelCount);
                     TransmitString(" ");
 
-	
-					TransmitString("name:");
-					for(int i=0; i<interPixelCount; i++)
-					{
-					    TransmitByte(dataPtr[i]);
-					    //TransmitByte(' ');
-					}
-					TransmitString(":: ");
+
+                    TransmitString("name:");
+                    for(int i=0; i<interPixelCount; i++)
+                    {
+                        TransmitByte(dataPtr[i]);
+                        //TransmitByte(' ');
+                    }
+                    TransmitString(":: ");
 
                     // remove the name from the buffer (and ignore)
                     dataPtr += interPixelCount;
                     dataSize -= interPixelCount;
 
-					VNCstate = VNCSTATE_CONNECTED;
-				}
-				break;
-	
-			case VNCSTATE_CONNECTED:
-				VNCstate = VNCSTATE_WAITFORUPDATE ;
-				break;
-				
-			case VNCSTATE_CONNECTED_REFRESH:
-			case VNCSTATE_WAITFORUPDATE:
-				// data should be FrameBufferUpdate
-				if( dataSize >= 4 )
-				{
-					// currently only looks for framebufferupdates, anything else breaks
-					if( dataPtr[0] != 0x00 )
-					{	
-						TransmitString("unrec\n\r");
-						VNCstate = VNCSTATE_DEAD;
-						return 0;
-					}
-					
-					rectangleCount = (dataPtr[2]<<8) + dataPtr[3];
+                    VNCstate = VNCSTATE_CONNECTED;
+                }
+                break;
 
-					dataSize -= 4;
-					dataPtr += 4;
-					
-					VNCpixelProcessorState = VNCPPSTATE_IDLE;
-					VNCstate = VNCSTATE_PROCESSINGUPDATE;
+            case VNCSTATE_CONNECTED:
+                VNCstate = VNCSTATE_WAITFORUPDATE ;
+                break;
+
+            case VNCSTATE_CONNECTED_REFRESH:
+            case VNCSTATE_WAITFORUPDATE:
+                // data should be FrameBufferUpdate
+                if( dataSize >= 4 )
+                {
+                    // currently only looks for framebufferupdates, anything else breaks
+                    if( dataPtr[0] != 0x00 )
+                    {
+                        TransmitString("unrec\n\r");
+                        VNCstate = VNCSTATE_DEAD;
+                        return 0;
+                    }
+
+                    rectangleCount = (dataPtr[2]<<8) + dataPtr[3];
+
+                    dataSize -= 4;
+                    dataPtr += 4;
+
+                    VNCpixelProcessorState = VNCPPSTATE_IDLE;
+                    VNCstate = VNCSTATE_PROCESSINGUPDATE;
 
 #if 0
-					TransmitString("fb:");
-					TransmitHex(rectangleCount/256);
-					TransmitHex(rectangleCount);
-					TransmitString(" ");
+                    TransmitString("fb:");
+                    TransmitHex(rectangleCount/256);
+                    TransmitHex(rectangleCount);
+                    TransmitString(" ");
 #endif
-				}
-				
-				break;
-	
-			case VNCSTATE_PROCESSINGUPDATE:
-				pixelProcessor();
-				break;
-	
-			default:
-				TransmitString("err:pro");
-				dataSize = 0;
-	            while(1);
-				break;
-		}	
-	}
-	while( dataSize > REMAINDERBUFFER_SIZE ) ;
-	
-	// copy any remainder data into the remainder buffer
-	return dataSize;
+                }
+
+                break;
+
+            case VNCSTATE_PROCESSINGUPDATE:
+                pixelProcessor();
+                break;
+
+            default:
+                TransmitString("err:pro");
+                dataSize = 0;
+                while(1);
+                break;
+        }
+    }
+    while( dataSize > REMAINDERBUFFER_SIZE ) ;
+
+    // copy any remainder data into the remainder buffer
+    return dataSize;
 }
 
 
 unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 {
-	switch(VNCsendState)
-	{
-		case VNCSENDSTATE_INIT:
-			if( VNCstate > VNCSTATE_NOTCONNECTED )
-			{
-				TransmitString("s:INIT ");
-			    memcpy_P(buffer, versionMessage, sizeof(versionMessage)-1);
-				VNCsendState = VNCSENDSTATE_VERSIONSENT;
-				return sizeof(versionMessage)-1;
-			}
-			break;
+    switch(VNCsendState)
+    {
+        case VNCSENDSTATE_INIT:
+            if( VNCstate > VNCSTATE_NOTCONNECTED )
+            {
+                TransmitString("s:INIT ");
+                memcpy_P(buffer, versionMessage, sizeof(versionMessage)-1);
+                VNCsendState = VNCSENDSTATE_VERSIONSENT;
+                return sizeof(versionMessage)-1;
+            }
+            break;
 
-		case VNCSENDSTATE_VERSIONSENT:
-			if( VNCstate > VNCSTATE_WAITFORVNCAUTHWORD )
-			{
+        case VNCSENDSTATE_VERSIONSENT:
+            if( VNCstate > VNCSTATE_WAITFORVNCAUTHWORD )
+            {
                 TransmitString("s:VSENT ");
-				memcpy_P(buffer, VNCauthWord, sizeof(VNCauthWord));
-				VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
-				return sizeof(VNCauthWord);
-			}
-			break;
+                memcpy_P(buffer, VNCauthWord, sizeof(VNCauthWord));
+                VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
+                return sizeof(VNCauthWord);
+            }
+            break;
 
-		case VNCSENDSTATE_AUTHWORDSENT:
-			if( VNCstate > VNCSTATE_WAITFORVNCAUTHRESPONSE )
-			{
+        case VNCSENDSTATE_AUTHWORDSENT:
+            if( VNCstate > VNCSTATE_WAITFORVNCAUTHRESPONSE )
+            {
                 TransmitString("s:AWSENT ");
-				buffer[0] = '\0';  // client init message is 0 indicating server should give exclusive access to this client
-				VNCsendState = VNCSENDSTATE_CLIENTINITMESSAGESENT;
-				return 1;
-			}
-			break;
-			
-		case VNCSENDSTATE_CLIENTINITMESSAGESENT:
-			if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
-			{
+                buffer[0] = '\0';  // client init message is 0 indicating server should give exclusive access to this client
+                VNCsendState = VNCSENDSTATE_CLIENTINITMESSAGESENT;
+                return 1;
+            }
+            break;
+
+        case VNCSENDSTATE_CLIENTINITMESSAGESENT:
+            if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
+            {
                 TransmitString("s:CLIMS ");
-				memcpy_P(buffer, pixelFormatMessage, sizeof(pixelFormatMessage));
-				VNCsendState = VNCSENDSTATE_PIXELFORMATSENT;
-				return sizeof(pixelFormatMessage);
-			}
-			break;
+                memcpy_P(buffer, pixelFormatMessage, sizeof(pixelFormatMessage));
+                VNCsendState = VNCSENDSTATE_PIXELFORMATSENT;
+                return sizeof(pixelFormatMessage);
+            }
+            break;
 
-		case VNCSENDSTATE_PIXELFORMATSENT:
-			//TransmitString("<-");
-			if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
-			{
+        case VNCSENDSTATE_PIXELFORMATSENT:
+            //TransmitString("<-");
+            if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
+            {
                 TransmitString("s:PFMSENT ");
-				memcpy_P(buffer, encodingTypeMessage, sizeof(encodingTypeMessage));
-				VNCsendState = VNCSENDSTATE_ENCODINGTYPESENT;
-				//transmitSpace = 0;
-				return sizeof(encodingTypeMessage);
-			}
-			break;
+                memcpy_P(buffer, encodingTypeMessage, sizeof(encodingTypeMessage));
+                VNCsendState = VNCSENDSTATE_ENCODINGTYPESENT;
+                //transmitSpace = 0;
+                return sizeof(encodingTypeMessage);
+            }
+            break;
 
-		case VNCSENDSTATE_ENCODINGTYPESENT:
-			if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
-			{
+        case VNCSENDSTATE_ENCODINGTYPESENT:
+            if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
+            {
                 TransmitString("s:ENCTSENT ");
-				memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
-				// change the request to a full refresh
-				buffer[1] = 0x00;
-				VNCsendState = VNCSENDSTATE_PARTIALREFRESHSENT;
-				return sizeof(refreshMessage);
-			}
-			break;
+                memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
+                // change the request to a full refresh
+                buffer[1] = 0x00;
+                VNCsendState = VNCSENDSTATE_PARTIALREFRESHSENT;
+                return sizeof(refreshMessage);
+            }
+            break;
 
-		case VNCSENDSTATE_PARTIALREFRESHSENT:
-			//if( VNCstate == VNCSTATE_CONNECTED_REFRESH || uip_poll() )
-		    if( VNCstate == VNCSTATE_CONNECTED_REFRESH )
-			{
+        case VNCSENDSTATE_PARTIALREFRESHSENT:
+            //if( VNCstate == VNCSTATE_CONNECTED_REFRESH || uip_poll() )
+            if( VNCstate == VNCSTATE_CONNECTED_REFRESH )
+            {
 #if 0
                 static uint8_t counter;
                 TransmitString("s:PREFS ");
-		        TransmitHex(counter++);
-		        TransmitByte(' ');
+                TransmitHex(counter++);
+                TransmitByte(' ');
 #endif
-				memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
-	            //update counter
-				//buffer[1] = counter;
-				return sizeof(refreshMessage);
-				//return 0;
-			}
-		    break;
+                memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
+                return sizeof(refreshMessage);
+            }
+            break;
 
-		default:
-			TransmitString("err:ACK");
-			break;
-	}
-	return 0;
+        default:
+            TransmitString("err:ACK");
+            break;
+    }
+    return 0;
 }
 
 #if 0
 void vnc_app(void)
 {
-	unsigned char transmitSpace = 1;
-	
-	// check for connection status - if closed return - reconnect later
-	if( uip_closed() )
-	{
-		TransmitByte('X');
-		TransmitByte('C');
-		return;
-	}
-	
-	if( uip_aborted() )
-	{
-		TransmitByte('X');
-		TransmitByte('A');
-		return;
-	}
+    unsigned char transmitSpace = 1;
 
-	if( uip_timedout() )
-	{
-		TransmitByte('X');
-		TransmitByte('T');
-		return;
-	}
+    // check for connection status - if closed return - reconnect later
+    if( uip_closed() )
+    {
+        TransmitByte('X');
+        TransmitByte('C');
+        return;
+    }
 
-	// call processing function
-	processNewdata();
+    if( uip_aborted() )
+    {
+        TransmitByte('X');
+        TransmitByte('A');
+        return;
+    }
 
-	// clear out the uIP data buffer
-	uip_len = 0;
-	
-	// check for retransmit - send the last packet again
-	if( uip_rexmit() )
-	{
-		TransmitString("NAK");
-		
-		// call transmit function with the previous state
-		sendMessage(VNCsendState-1);
-		
-		// can't do anything more
-		return;
-	}
-	
-	
-	// check for space in the buffer - send packet
-	if( uip_acked() || transmitSpace)
-	{
-		transmitSpace = 1;
-		uip_reset_acked();
-		
-		// call transmit function
-		sendMessage(VNCsendState);
-		
-		// if something was sent, the transmit buffer is now full
-		if( uip_len )
-			transmitSpace = 0;
-	}
+    if( uip_timedout() )
+    {
+        TransmitByte('X');
+        TransmitByte('T');
+        return;
+    }
+
+    // call processing function
+    processNewdata();
+
+    // clear out the uIP data buffer
+    uip_len = 0;
+
+    // check for retransmit - send the last packet again
+    if( uip_rexmit() )
+    {
+        TransmitString("NAK");
+
+        // call transmit function with the previous state
+        sendMessage(VNCsendState-1);
+
+        // can't do anything more
+        return;
+    }
+
+
+    // check for space in the buffer - send packet
+    if( uip_acked() || transmitSpace)
+    {
+        transmitSpace = 1;
+        uip_reset_acked();
+
+        // call transmit function
+        sendMessage(VNCsendState);
+
+        // if something was sent, the transmit buffer is now full
+        if( uip_len )
+            transmitSpace = 0;
+    }
 }
 #endif

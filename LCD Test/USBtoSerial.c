@@ -56,24 +56,24 @@ static uint8_t      USARTtoUSB_Buffer_Data[128];
  *  within a device can be differentiated from one another.
  */
 USB_ClassInfo_CDC_Device_t VirtualSerial_CDC_Interface =
-	{
-		.Config =
-			{
-				.ControlInterfaceNumber         = 0,
+    {
+        .Config =
+            {
+                .ControlInterfaceNumber         = 0,
 
-				.DataINEndpointNumber           = CDC_TX_EPNUM,
-				.DataINEndpointSize             = CDC_TXRX_EPSIZE,
-				.DataINEndpointDoubleBank       = false,
+                .DataINEndpointNumber           = CDC_TX_EPNUM,
+                .DataINEndpointSize             = CDC_TXRX_EPSIZE,
+                .DataINEndpointDoubleBank       = false,
 
-				.DataOUTEndpointNumber          = CDC_RX_EPNUM,
-				.DataOUTEndpointSize            = CDC_TXRX_EPSIZE,
-				.DataOUTEndpointDoubleBank      = false,
+                .DataOUTEndpointNumber          = CDC_RX_EPNUM,
+                .DataOUTEndpointSize            = CDC_TXRX_EPSIZE,
+                .DataOUTEndpointDoubleBank      = false,
 
-				.NotificationEndpointNumber     = CDC_NOTIFICATION_EPNUM,
-				.NotificationEndpointSize       = CDC_NOTIFICATION_EPSIZE,
-				.NotificationEndpointDoubleBank = false,
-			},
-	};
+                .NotificationEndpointNumber     = CDC_NOTIFICATION_EPNUM,
+                .NotificationEndpointSize       = CDC_NOTIFICATION_EPSIZE,
+                .NotificationEndpointDoubleBank = false,
+            },
+    };
 
 
 #define VNC_BUFFER_MAX 200
@@ -90,52 +90,52 @@ volatile bool usbConnectionReset = false;
  */
 int main(void)
 {
-	unsigned int vncRemainder;
-	unsigned int vncResponseSize = 0;
+    unsigned int vncRemainder;
+    unsigned int vncResponseSize = 0;
 
     SetupHardware();
 
-	RingBuffer_InitBuffer(&USBtoUSART_Buffer, USBtoUSART_Buffer_Data, sizeof(USBtoUSART_Buffer_Data));
-	RingBuffer_InitBuffer(&USARTtoUSB_Buffer, USARTtoUSB_Buffer_Data, sizeof(USARTtoUSB_Buffer_Data));
+    RingBuffer_InitBuffer(&USBtoUSART_Buffer, USBtoUSART_Buffer_Data, sizeof(USBtoUSART_Buffer_Data));
+    RingBuffer_InitBuffer(&USARTtoUSB_Buffer, USARTtoUSB_Buffer_Data, sizeof(USARTtoUSB_Buffer_Data));
 
-	LEDs_SetAllLEDs(LEDMASK_USB_NOTREADY);
-	sei();
+    LEDs_SetAllLEDs(LEDMASK_USB_NOTREADY);
+    sei();
 
-	for (;;)
-	{
-		if(usbConnectionReset)
-		{
-		    // reset system
-		    vncRemainder = 0;
-		    vncBufferSize = 0;
-		    Vnc_ResetSystem();
+    for (;;)
+    {
+        if(usbConnectionReset)
+        {
+            // reset system
+            vncRemainder = 0;
+            vncBufferSize = 0;
+            Vnc_ResetSystem();
 
-		    usbConnectionReset = false;
-		}
+            usbConnectionReset = false;
+        }
 
-	    while ( vncBufferSize < VNC_BUFFER_MAX )
-		{
+        while ( vncBufferSize < VNC_BUFFER_MAX )
+        {
             int16_t ReceivedByte = CDC_Device_ReceiveByte(&VirtualSerial_CDC_Interface);
-		    if(ReceivedByte < 0)
-		        break;
+            if(ReceivedByte < 0)
+                break;
 
-		    vncBuffer[vncBufferSize++] = (uint8_t)ReceivedByte;
-		}
+            vncBuffer[vncBufferSize++] = (uint8_t)ReceivedByte;
+        }
 
-		vncRemainder = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
+        vncRemainder = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
 
-		// move unused data to the front of the buffer
-		memcpy(vncBuffer, vncBuffer + (vncBufferSize - vncRemainder), vncRemainder);
+        // move unused data to the front of the buffer
+        memcpy(vncBuffer, vncBuffer + (vncBufferSize - vncRemainder), vncRemainder);
 
-		vncBufferSize = vncRemainder;
+        vncBufferSize = vncRemainder;
 
-		// collect any data to send to the Vnc server and send it
-		if(!vncResponseSize)
-		    vncResponseSize = Vnc_LoadResponseBuffer(vncResponseBuffer);
+        // collect any data to send to the Vnc server and send it
+        if(!vncResponseSize)
+            vncResponseSize = Vnc_LoadResponseBuffer(vncResponseBuffer);
 
-		int i;
-		for(i=0; i<vncResponseSize; i++)
-		{
+        int i;
+        for(i=0; i<vncResponseSize; i++)
+        {
             if (CDC_Device_SendByte(&VirtualSerial_CDC_Interface,
                                     vncResponseBuffer[i]) != ENDPOINT_READYWAIT_NoError)
             {
@@ -149,54 +149,54 @@ int main(void)
                 }
                 break;
             }
-		}
-		if(i == vncResponseSize)
-		    vncResponseSize = 0;
+        }
+        if(i == vncResponseSize)
+            vncResponseSize = 0;
 
 #if 0
-		// modified to make USB loopback
-		/* Check if the UART receive buffer flush timer has expired or the buffer is nearly full */
-		uint16_t BufferCount = RingBuffer_GetCount(&USBtoUSART_Buffer);
-		if ((TIFR0 & (1 << TOV0)) || (BufferCount > (uint8_t)(sizeof(USBtoUSART_Buffer) * (3 / 4))))
-		{
-			/* Clear flush timer expiry flag */
-			TIFR0 |= (1 << TOV0);
+        // modified to make USB loopback
+        /* Check if the UART receive buffer flush timer has expired or the buffer is nearly full */
+        uint16_t BufferCount = RingBuffer_GetCount(&USBtoUSART_Buffer);
+        if ((TIFR0 & (1 << TOV0)) || (BufferCount > (uint8_t)(sizeof(USBtoUSART_Buffer) * (3 / 4))))
+        {
+            /* Clear flush timer expiry flag */
+            TIFR0 |= (1 << TOV0);
 
-			/* Read bytes from the USART receive buffer into the USB IN endpoint */
-			while (BufferCount--)
-			{
-				/* Try to send the next byte of data to the host, abort if there is an error without dequeuing */
-				if (CDC_Device_SendByte(&VirtualSerial_CDC_Interface,
-				                        RingBuffer_Peek(&USBtoUSART_Buffer)) != ENDPOINT_READYWAIT_NoError)
-				{
-					break;
-				}
+            /* Read bytes from the USART receive buffer into the USB IN endpoint */
+            while (BufferCount--)
+            {
+                /* Try to send the next byte of data to the host, abort if there is an error without dequeuing */
+                if (CDC_Device_SendByte(&VirtualSerial_CDC_Interface,
+                                        RingBuffer_Peek(&USBtoUSART_Buffer)) != ENDPOINT_READYWAIT_NoError)
+                {
+                    break;
+                }
 
-				/* Dequeue the already sent byte from the buffer now we have confirmed that no transmission error occurred */
-				RingBuffer_Remove(&USBtoUSART_Buffer);
-			}
-		}
+                /* Dequeue the already sent byte from the buffer now we have confirmed that no transmission error occurred */
+                RingBuffer_Remove(&USBtoUSART_Buffer);
+            }
+        }
 #endif
 
 
 
-		CDC_Device_USBTask(&VirtualSerial_CDC_Interface);
-		USB_USBTask();
-	}
+        CDC_Device_USBTask(&VirtualSerial_CDC_Interface);
+        USB_USBTask();
+    }
 }
 
 /** Configures the board hardware and chip peripherals for the demo's functionality. */
 void SetupHardware(void)
 {
-	/* Disable watchdog if enabled by bootloader/fuses */
-	MCUSR &= ~(1 << WDRF);
-	wdt_disable();
+    /* Disable watchdog if enabled by bootloader/fuses */
+    MCUSR &= ~(1 << WDRF);
+    wdt_disable();
 
-	/* Disable clock division */
-	clock_prescale_set(clock_div_1);
+    /* Disable clock division */
+    clock_prescale_set(clock_div_1);
 
-	/* Hardware Initialization */
-	LEDs_Init();
+    /* Hardware Initialization */
+    LEDs_Init();
 
     /* Set the new baud rate before configuring the USART */
     UBRR1  = SERIAL_2X_UBBRVAL(57600);
@@ -208,41 +208,21 @@ void SetupHardware(void)
     UCSR1A = (1 << U2X1);
     UCSR1B = ((1 << RXCIE1) | (1 << TXEN1) | (1 << RXEN1));
 
-	USB_Init();
+    USB_Init();
 
-	/* Start the flush timer so that overflows occur rapidly to push received bytes to the USB interface */
-	TCCR0B = (1 << CS02);
+    /* Start the flush timer so that overflows occur rapidly to push received bytes to the USB interface */
+    TCCR0B = (1 << CS02);
 
-	SetupLcd();
-	lcd_initial();
-	ClearDisplay();
-
-#if 0
-#define BYTES_PER_PIXEL 2
-	static unsigned char tempHextileBuffer[16][16*2];
-
-	//memset(tempHextileBuffer, 0xAA,16*16*2);
-    for (int j = 0; j <= 16; j++)
-    {
-        for (int i = 0; i <= 16 * BYTES_PER_PIXEL; i+=BYTES_PER_PIXEL)
-        {
-            // uint16_t pixelVal = (0x3F*i/2/16) << 5;  // green
-            uint16_t pixelVal = (0x1F*i/2/16) << 11;  // red
-            tempHextileBuffer[ j ][ i ] = (uint8_t)pixelVal;
-            if(BYTES_PER_PIXEL == 2)
-                tempHextileBuffer[ j ][ i+1 ] = (uint8_t)(pixelVal / 256);
-
-        }
-    }
-	DrawHextile(0,0,16,16,2,tempHextileBuffer);
-#endif
+    SetupLcd();
+    lcd_initial();
+    ClearDisplay();
 }
 
 /** Event handler for the library USB Connection event. */
 void EVENT_USB_Device_Connect(void)
 {
-	LEDs_SetAllLEDs(LEDMASK_USB_ENUMERATING);
-	Serial_SendByte('E');
+    LEDs_SetAllLEDs(LEDMASK_USB_ENUMERATING);
+    Serial_SendByte('E');
 }
 
 void EVENT_CDC_Device_ControLineStateChanged(USB_ClassInfo_CDC_Device_t* const CDCInterfaceInfo)
@@ -256,23 +236,23 @@ void EVENT_CDC_Device_ControLineStateChanged(USB_ClassInfo_CDC_Device_t* const C
 /** Event handler for the library USB Disconnection event. */
 void EVENT_USB_Device_Disconnect(void)
 {
-	LEDs_SetAllLEDs(LEDMASK_USB_NOTREADY);
+    LEDs_SetAllLEDs(LEDMASK_USB_NOTREADY);
 }
 
 /** Event handler for the library USB Configuration Changed event. */
 void EVENT_USB_Device_ConfigurationChanged(void)
 {
-	bool ConfigSuccess = true;
+    bool ConfigSuccess = true;
 
-	ConfigSuccess &= CDC_Device_ConfigureEndpoints(&VirtualSerial_CDC_Interface);
+    ConfigSuccess &= CDC_Device_ConfigureEndpoints(&VirtualSerial_CDC_Interface);
 
-	LEDs_SetAllLEDs(ConfigSuccess ? LEDMASK_USB_READY : LEDMASK_USB_ERROR);
+    LEDs_SetAllLEDs(ConfigSuccess ? LEDMASK_USB_READY : LEDMASK_USB_ERROR);
 }
 
 /** Event handler for the library USB Control Request reception event. */
 void EVENT_USB_Device_ControlRequest(void)
 {
-	CDC_Device_ProcessControlRequest(&VirtualSerial_CDC_Interface);
+    CDC_Device_ProcessControlRequest(&VirtualSerial_CDC_Interface);
 }
 
 /** ISR to manage the reception of data from the serial port, placing received bytes into a circular buffer
@@ -280,10 +260,10 @@ void EVENT_USB_Device_ControlRequest(void)
  */
 ISR(USART1_RX_vect, ISR_BLOCK)
 {
-	uint8_t ReceivedByte = UDR1;
+    uint8_t ReceivedByte = UDR1;
 
-	if (USB_DeviceState == DEVICE_STATE_Configured)
-	  RingBuffer_Insert(&USARTtoUSB_Buffer, ReceivedByte);
+    if (USB_DeviceState == DEVICE_STATE_Configured)
+      RingBuffer_Insert(&USARTtoUSB_Buffer, ReceivedByte);
 }
 
 /** Event handler for the CDC Class driver Line Encoding Changed event.
