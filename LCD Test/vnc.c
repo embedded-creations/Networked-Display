@@ -56,7 +56,8 @@ enum {  VNCSENDSTATE_INIT,
 
 enum {  VNCPPSTATE_IDLE,
         VNCPPSTATE_OUTBOUNDS,
-        VNCPPSTATE_HEXTILE
+        VNCPPSTATE_HEXTILE,
+        VNCPPSTATE_COPYRECT
           };
 
 enum {  HEXTILESTATE_INIT,
@@ -108,7 +109,7 @@ prog_char refreshMessage[] = { 0x03,0x01,0,0,0,0,SCREEN_WIDTH/256,SCREEN_WIDTH,S
 
 
 // requests hextile encoding only
-prog_uchar encodingTypeMessage[] = { 2, 0, 0, 1, 0, 0, 0, 5 } ;
+prog_uchar encodingTypeMessage[] = VNC_ENCODING_TYPE_HEXTILE_AND_COPYRECT;
 
 
 
@@ -159,7 +160,11 @@ static unsigned char * dataPtr;
 static unsigned int dataSize = 0;
 
 
-
+void Vnc_ResetSystem(void)
+{
+    VNCstate = VNCSTATE_NOTCONNECTED;
+    VNCsendState = VNCSENDSTATE_INIT;
+}
 
 //  removes the amount of pixels specified by interPixelCount from the buffer
 //  or as many as are currently in the buffer
@@ -181,6 +186,19 @@ void dropOutOfViewPixels(void)
 		interPixelCount-=dataSize;
 		dataSize = 0;
 	}
+}
+
+
+void processCopyRect(void)
+{
+    // wait for both copyrect coordinates
+    if( dataSize < 4 )
+      return;
+
+    dataSize -= 4;
+    dataPtr += 4;
+
+    VNCpixelProcessorState = VNCPPSTATE_IDLE;
 }
 
 
@@ -709,6 +727,10 @@ void pixelProcessor(void)
 			  case 0:  // raw
                 goto decodeRaw;
 			    break;
+
+			  case 1:  // CopyRect
+			      goto decodeCopyRect;
+			      break;
 			    
 			  case 5:  // hextile
 			    goto decodeHextile;
@@ -752,6 +774,21 @@ decodeHextile:
 				
             return;			
 
+decodeCopyRect:
+            dataPtr += 12;
+            dataSize -= 12;
+            VNCpixelProcessorState = VNCPPSTATE_COPYRECT;
+
+            processCopyRect();
+            TransmitString("#$copyrect$#");
+
+            if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
+            {
+                goto vncppstate_idle;
+            }
+
+            return;
+
 		case VNCPPSTATE_OUTBOUNDS:
 			// drop all pixels in the current rectangle
 			dropOutOfViewPixels();
@@ -775,6 +812,16 @@ decodeHextile:
 		      goto vncppstate_idle;
 		  }
 		  break;
+
+		case VNCPPSTATE_COPYRECT:
+		  processCopyRect();
+
+		  if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
+          {
+              goto vncppstate_idle;
+          }
+          break;
+
 
 		default:
 			// shouldn't be here
@@ -917,10 +964,12 @@ unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length)
 					VNCpixelProcessorState = VNCPPSTATE_IDLE;
 					VNCstate = VNCSTATE_PROCESSINGUPDATE;
 
+#if 0
 					TransmitString("fb:");
 					TransmitHex(rectangleCount/256);
 					TransmitHex(rectangleCount);
 					TransmitString(" ");
+#endif
 				}
 				
 				break;
@@ -1022,7 +1071,10 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 		        TransmitByte(' ');
 #endif
 				memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
-	            return sizeof(refreshMessage);
+	            //update counter
+				//buffer[1] = counter;
+				return sizeof(refreshMessage);
+				//return 0;
 			}
 		    break;
 

@@ -83,6 +83,7 @@ uint8_t vncResponseBuffer[MAXIMUM_VNCRESPONSE_SIZE];
 
 unsigned int vncBufferSize = 0;
 
+volatile bool usbConnectionReset = false;
 
 /** Main program entry point. This routine contains the overall program flow, including initial
  *  setup of all components and the main program loop.
@@ -90,7 +91,7 @@ unsigned int vncBufferSize = 0;
 int main(void)
 {
 	unsigned int vncRemainder;
-	unsigned int vncResponseSize;
+	unsigned int vncResponseSize = 0;
 
     SetupHardware();
 
@@ -102,7 +103,17 @@ int main(void)
 
 	for (;;)
 	{
-		while ( vncBufferSize < VNC_BUFFER_MAX )
+		if(usbConnectionReset)
+		{
+		    // reset system
+		    vncRemainder = 0;
+		    vncBufferSize = 0;
+		    Vnc_ResetSystem();
+
+		    usbConnectionReset = false;
+		}
+
+	    while ( vncBufferSize < VNC_BUFFER_MAX )
 		{
             int16_t ReceivedByte = CDC_Device_ReceiveByte(&VirtualSerial_CDC_Interface);
 		    if(ReceivedByte < 0)
@@ -113,21 +124,34 @@ int main(void)
 
 		vncRemainder = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
 
+		// move unused data to the front of the buffer
 		memcpy(vncBuffer, vncBuffer + (vncBufferSize - vncRemainder), vncRemainder);
 
 		vncBufferSize = vncRemainder;
 
-		vncResponseSize = Vnc_LoadResponseBuffer(vncResponseBuffer);
+		// collect any data to send to the Vnc server and send it
+		if(!vncResponseSize)
+		    vncResponseSize = Vnc_LoadResponseBuffer(vncResponseBuffer);
 
-		for(int i=0; i<vncResponseSize; i++)
+		int i;
+		for(i=0; i<vncResponseSize; i++)
 		{
             if (CDC_Device_SendByte(&VirtualSerial_CDC_Interface,
                                     vncResponseBuffer[i]) != ENDPOINT_READYWAIT_NoError)
             {
                 TransmitString("TXfull");
+                if(i != 0)
+                {
+                    memcpy(vncResponseBuffer, vncResponseBuffer + i,
+                            vncResponseSize - i);
+                    vncResponseSize -= i;
+                    i=0;
+                }
                 break;
             }
 		}
+		if(i == vncResponseSize)
+		    vncResponseSize = 0;
 
 #if 0
 		// modified to make USB loopback
@@ -192,6 +216,26 @@ void SetupHardware(void)
 	SetupLcd();
 	lcd_initial();
 	ClearDisplay();
+
+#if 0
+#define BYTES_PER_PIXEL 2
+	static unsigned char tempHextileBuffer[16][16*2];
+
+	//memset(tempHextileBuffer, 0xAA,16*16*2);
+    for (int j = 0; j <= 16; j++)
+    {
+        for (int i = 0; i <= 16 * BYTES_PER_PIXEL; i+=BYTES_PER_PIXEL)
+        {
+            // uint16_t pixelVal = (0x3F*i/2/16) << 5;  // green
+            uint16_t pixelVal = (0x1F*i/2/16) << 11;  // red
+            tempHextileBuffer[ j ][ i ] = (uint8_t)pixelVal;
+            if(BYTES_PER_PIXEL == 2)
+                tempHextileBuffer[ j ][ i+1 ] = (uint8_t)(pixelVal / 256);
+
+        }
+    }
+	DrawHextile(0,0,16,16,2,tempHextileBuffer);
+#endif
 }
 
 /** Event handler for the library USB Connection event. */
@@ -206,6 +250,7 @@ void EVENT_CDC_Device_ControLineStateChanged(USB_ClassInfo_CDC_Device_t* const C
     Serial_SendByte('!');
 
     // we can assume we just lost or gained connection with the VNC server, clear any buffers we have
+    usbConnectionReset = true;
 }
 
 /** Event handler for the library USB Disconnection event. */

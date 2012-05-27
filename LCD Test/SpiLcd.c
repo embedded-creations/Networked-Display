@@ -8,6 +8,7 @@
 #define DD_SCK  PB1
 #define DD_SS   PB0
 #define DD_A0   PB4
+#define DD_RES  PB5
 
 
 void SPI_MasterTransmit (char cData)
@@ -84,15 +85,18 @@ void SlowLoadDisplay(void)
 
 void lcd_initial (void)
 {
-    /*
-     reset=0;
-     delay(100);
-     reset=1;
-     delay(100);
-     */
+    // hardware reset (minimum 10us pulse)
+    DDR_SPI |= (1 << DD_RES);
+    _delay_ms(1);
+    PORT_SPI |= (1 << DD_RES);
+
+    // sleep out command can't be sent for 120ms after releasing Reset
+    _delay_ms(120);
 //------------------------------------------------------------------//
 //-------------------Software Reset-------------------------------//
     write_command(0x11); //Sleep out
+
+    // When IC is in Sleep In mode, it is necessary to wait 120msec before sending next command
     _delay_ms(120);
 
     // ST7735R Frame Rate (Frame rate=fosc/((RTNA + 20) x (LINE + FPA + BPA)))

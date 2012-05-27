@@ -29,6 +29,7 @@
 
 unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length);
 unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer);
+void Vnc_ResetSystem(void);
 
 
 #define RAW_DECODING 0
@@ -51,6 +52,9 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer);
                                             0x00, 0x1F, \
                                             11, 5, 0, \
                                             0,0,0 }
+
+#define VNC_ENCODING_TYPE_HEXTILE_ONLY              { 2, 0, 0, 1, 0, 0, 0, 5 }
+#define VNC_ENCODING_TYPE_HEXTILE_AND_COPYRECT      { 2, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 5 }
 
 
 // up to 16 bytes of TCP data can be left unused and buffered until the next
