@@ -168,7 +168,8 @@ void Vnc_ResetSystem(void)
 
 //  removes the amount of pixels specified by interPixelCount from the buffer
 //  or as many as are currently in the buffer
-void dropOutOfViewPixels(void)
+// returns 0 if not enough data in buffer to process
+int dropOutOfViewPixels(void)
 {
     // clear the rest of the pixels out of the receive buffer
     if( (dataSize >= interPixelCount) )
@@ -176,7 +177,7 @@ void dropOutOfViewPixels(void)
         dataPtr += interPixelCount;
         dataSize -= interPixelCount;
         interPixelCount = 0;
-        return;
+        return 1;
     }
 
     // clear out the receive buffer - more pixels in transit
@@ -186,19 +187,24 @@ void dropOutOfViewPixels(void)
         interPixelCount-=dataSize;
         dataSize = 0;
     }
+
+    return 0;
 }
 
 
-void processCopyRect(void)
+// returns 0 if not enough data in buffer to process
+int processCopyRect(void)
 {
     // wait for both copyrect coordinates
     if( dataSize < 4 )
-      return;
+      return 0;
 
     dataSize -= 4;
     dataPtr += 4;
 
     VNCpixelProcessorState = VNCPPSTATE_IDLE;
+
+    return 1;
 }
 
 
@@ -207,7 +213,8 @@ void processCopyRect(void)
 // sub-functions to reduce the stack usage, but for now, it works...
 // Any tile that only partially overlaps the local display window will be
 // dropped
-void processHextile(void)
+// returns 0 if not enough data in buffer to process, or processing is complete
+int processHextile(void)
 {
   // tile x,y w,h
   static unsigned int tileX, tileY;
@@ -232,7 +239,6 @@ void processHextile(void)
   
   switch( hextileState )
   {
-  
     case HEXTILESTATE_INIT:
     
       // set the current x,y
@@ -247,11 +253,9 @@ void processHextile(void)
       
       // go to parseheader
       hextileState = HEXTILESTATE_PARSEHEADER ;
-      goto hextile_parseheader;
+      return 1;
     
     case HEXTILESTATE_DONE:
-hextile_done:    
-      
       // increment the tile x,y
       tileX += tileW;
            
@@ -263,7 +267,7 @@ hextile_done:
         {
           VNCpixelProcessorState = VNCPPSTATE_IDLE;
           hextileState = HEXTILESTATE_INIT;
-          return;
+          return 0;
         }
         
         tileX = updateWindowX0;
@@ -275,15 +279,12 @@ hextile_done:
       tileW = updateWindowX1 < tileX+16 ? updateWindowX1-tileX : 16;
       
       hextileState = HEXTILESTATE_PARSEHEADER;
-      
-      // continue to parseheader
+      return 1;
     
     case HEXTILESTATE_PARSEHEADER:
-hextile_parseheader:
-    
       // wait for subencoding byte
       if( dataSize < 1 )
-        return;
+        return 0;
         
       subencodingByte = *dataPtr++;
       dataSize--;
@@ -300,24 +301,22 @@ hextile_parseheader:
           temp3 += BYTES_PER_PIXEL;
         
       // if the optional bytes are not in the buffer, exit
-      if( temp3 > dataSize )
+      if( dataSize < temp3 )
       {
         dataPtr--;
         dataSize++;
-        return;
+        return 0;
       }
       
       // if raw bit, set state to raw and goto drawraw
       if( subencodingByte & HEXTILE_RAW_MASK )
       {
-        //pixelCount = tileW * tileH;
-        
         if( tileX < windowX0 || (tileX + tileW) > windowX1 || tileY < windowY0
             || (tileY + tileH) > windowY1 )
         {
           interPixelCount = tileW * tileH * BYTES_PER_PIXEL;
           hextileState = HEXTILESTATE_DROPRAW;
-          goto hextile_dropraw;
+          return 1;
         }
         
         interPixelCount = tileW * tileH * BYTES_PER_PIXEL;
@@ -325,7 +324,7 @@ hextile_parseheader:
         SetupTile(tileX, tileY, tileW, tileH);
 
         hextileState = HEXTILESTATE_DRAWRAW;
-        goto hextile_drawraw;
+        return 1;
       }
       
       // else - if background specified read in pixel value
@@ -367,25 +366,22 @@ hextile_parseheader:
       
       hextileState = HEXTILESTATE_FILLBUFFER ;
       
-      goto hextile_fillbuffer;
+      return 1;
     
     case HEXTILESTATE_DROPRAW:
-hextile_dropraw:
-
-      //TransmitString("drop");
-      dropOutOfViewPixels();
+      if(!dropOutOfViewPixels())
+          return 0;
       
       if( interPixelCount == 0)
       {
         hextileState = HEXTILESTATE_DONE;
-        goto hextile_done; 
+        return 1;
       }
         
       break;
 
 
     case HEXTILESTATE_DRAWRAW:
-hextile_drawraw:
     if(interPixelCount > dataSize)
     {
         int bytesToDraw = dataSize;
@@ -404,14 +400,12 @@ hextile_drawraw:
         interPixelCount = 0;
 
         hextileState = HEXTILESTATE_DONE;
-        goto hextile_done;
+        return 1;
     }
 
-      break;
+      return 0;
 
     case HEXTILESTATE_FILLBUFFER:
-hextile_fillbuffer:
-
       // draw all the subrectangles to the buffer
       while( numSubrects != 0 )
       {
@@ -421,7 +415,7 @@ hextile_fillbuffer:
         if( subencodingByte & HEXTILE_SUBRECTCOLOR_MASK )
         {
           if( dataSize < 2 + BYTES_PER_PIXEL )
-            return;
+            return 0;
           
           // subrect color;
           rectangleColor = dataPtr[0];
@@ -432,7 +426,7 @@ hextile_fillbuffer:
           dataPtr+=BYTES_PER_PIXEL;
         }
         else if( dataSize < 2 )
-          return;
+          return 0;
 
         
         // read in a subrectangle (with pixelvalue?)
@@ -462,224 +456,36 @@ hextile_fillbuffer:
                 hextileBuffer[ j ][ i ] = rectangleColor;
                 if(BYTES_PER_PIXEL == 2)
                     hextileBuffer[ j ][ i+1 ] = rectangleColor / 256;
-
             }
         }
 
-#if 0
-        // are there any pixels in the first byte?
-        if( x0 < 0x08 )
-        {
-          temp1 = 0x80;
-          temp2 = 0x00;
-      
-          // create mask
-          for(i=0; i<0x08; i++)
-          {
-            if(i > x1)
-              break;
-            if(i >= x0)
-              temp2 |= temp1 ;
-            temp1 >>= 1;
-          }
-     
-          // if rectangle is white:
-          if( byte == 0xFF )
-            temp2 = ~temp2;
-       
-          // fill in the left side of the buffer
-          for(i=y0; i<=y1; i++)
-          {
-            if( byte != 0xFF )
-              hextileBuffer[0][i] |= temp2;
-            else hextileBuffer[0][i] &= temp2;
-          }
-        }
-   
-        // are there any pixels in the second byte?
-        if( x1 >= 0x08 )
-        {
-          temp1 = 0x80;
-     
-          // did the rectangle start in the first byte?
-          x0 = x0 > 0x08 ? x0 : 0x08;
-       
-          temp2 = 0x00;
-     
-          for(i=0x08; i<0x10; i++)
-          {
-            if(i > x1)
-              break;
-            if(i >= x0)
-              temp2 |= temp1 ;
-            temp1 >>= 1;
-          }
-   
-          // if white:
-          if( byte == 0xFF )
-            temp2 = ~temp2;
-       
-          // fill in the right side of the buffer
-          for(i=y0; i<=y1; i++)
-          {
-            if( byte != 0xFF )
-              hextileBuffer[1][i] |= temp2;
-            else hextileBuffer[1][i] &= temp2;
-          }
-   
-        }
-#endif
-     
         numSubrects--;
      }
    
-      
      // state = drawtile - continue
      hextileState = HEXTILESTATE_DRAWTILE ;
+     return 1;
     
   case HEXTILESTATE_DRAWTILE:
-    
-    // only draw the buffer if it fits cleanly into the currentWindow
-    if( tileX < windowX0 || (tileX + tileW) > windowX1 || tileY < windowY0
+        // only draw the buffer if it fits cleanly into the currentWindow
+        if( tileX < windowX0 || (tileX + tileW) > windowX1 || tileY < windowY0
         || (tileY + tileH) > windowY1 )
-    {
-      TransmitString("outofbounds ");
-      hextileState = HEXTILESTATE_DONE ;
-      goto hextile_done; 
-    }
-    
-    DrawHextile(tileX, tileY, tileW, tileH, BYTES_PER_PIXEL, hextileBuffer);
-
-#if 0
-    // compute the offset of the hextileBuffer from the 8-pixel SED1330 columns
-    temp1 = tileX & 0x07;
-
-    // shift the buffer by the offset
-    for( i=0; i<tileH; i++ )
-    {
-      byte  = hextileBuffer[0][i];
-      temp2 = hextileBuffer[1][i];
-      temp3 = hextileBuffer[2][i];
-      for(j=0; j<temp1; j++)
-      {
-        // shift the row once to the right, spanning all three columns
-        asm volatile("lsr %0" "\n\t"
-                     "ror %1" "\n\t"
-                     "ror %2" "\n\t"
-                     : "=r" (byte),
-                       "=r" (temp2),
-                       "=r" (temp3)
-                     : "r" (temp3),
-                       "r" (temp2),
-                       "r" (byte) );
-      }
-
-      hextileBuffer[0][i] = byte;
-      hextileBuffer[1][i] = temp2;
-      hextileBuffer[2][i] = temp3;
-    }
-
-    
-    
-
-    // draw the three columns to the display
-    for( j=0; j<3; j++)
-    {
-        // create a mask for the column
-        temp2 = 0x00;
-        byte = 0x80;
-
-        // the first column may not start on an 8-pixel boundary, the others will
-        if(j==0)
         {
-            for(i=0; i<8; i++)
-            {
-              if( i >= (tileW+temp1))
-                break;
-
-              if(i >= temp1)
-                temp2 |= byte;
-
-              byte>>=1;
-            }
-        }
-        else
-        {
-            for(i=0; i<8; i++)
-            {
-              if( i >= (tileW+temp1-(j*8)))
-                break;
-
-              temp2 |= byte;
-
-              byte>>=1;
-            }
+            TransmitString("outofbounds ");
+            hextileState = HEXTILESTATE_DONE ;
+            return 1;
         }
 
-        // a mask of 0x00 means there is no data to draw to the display
-        // a mask of 0xFF means all the existing display data will be overwritten
+        DrawHextile(tileX, tileY, tileW, tileH, BYTES_PER_PIXEL, hextileBuffer);
 
-        // if mask != 0x00 or 0xFF, read in from top-bottom and update buffer
-        if( (temp2 != 0x00) && (temp2 != 0xFF) )
-        {
-          // set address and cursor direction to down
-          *COMMAND_ADDRESS = CSRDIR_DOWN_COMMAND ;
-
-          writeAddress = (tileX >> 3) + j
-                       + (unsigned int)( tileY * ( 256/8 ) ) ;
-
-
-          *COMMAND_ADDRESS = CSRW_COMMAND ;
-          *READWRITE_ADDRESS = (unsigned char)writeAddress ;
-          *READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;
-
-          *COMMAND_ADDRESS = READ_COMMAND ;
-
-          for( i=0; i<tileH; i++ )
-          {
-            hextileBuffer[j][i] &= temp2;
-            hextileBuffer[j][i] |= (~temp2 & *COMMAND_ADDRESS);
-          }
-
-          *COMMAND_ADDRESS = CSRDIR_RIGHT_COMMAND ;
-        }
-
-        // if mask != 0x00, write to display from top-bottom
-        if( temp2 != 0x00 )
-        {
-          // set address and cursor direction to down
-          *COMMAND_ADDRESS = CSRDIR_DOWN_COMMAND ;
-
-          writeAddress = (tileX >> 3) + j
-                       + (unsigned int)( tileY * ( 256/8 ) ) ;
-
-
-          *COMMAND_ADDRESS = CSRW_COMMAND ;
-          *READWRITE_ADDRESS = (unsigned char)writeAddress ;
-          *READWRITE_ADDRESS = (unsigned char)(writeAddress>>8) ;
-
-          *COMMAND_ADDRESS = WRITE_COMMAND ;
-
-          for( i=0; i<tileH; i++ )
-          {
-            // buffer[0][i] = displaybyte & mask
-                *READWRITE_ADDRESS = hextileBuffer[j][i] ;
-          }
-
-          *COMMAND_ADDRESS = CSRDIR_RIGHT_COMMAND ;
-
-        }
-      }
-#endif
-
-      hextileState = HEXTILESTATE_DONE ;
-      goto hextile_done;
-
+        hextileState = HEXTILESTATE_DONE ;
+        return 1;
 
     default:
       break;
 
     }
+  return 1;
 }
 
 
@@ -688,22 +494,22 @@ hextile_fillbuffer:
 // this function is called immediately after a VNC FramebufferUpdate header is
 // received.  The function continues until all the rectangles contained in the
 // FramebufferUpdate group have been processed and drawn or discarded
-void pixelProcessor(void)
+// returns 0 if not enough data in buffer to process, or processing is complete
+int pixelProcessor(void)
 {
     switch(VNCpixelProcessorState)
     {
         case VNCPPSTATE_IDLE:
-        vncppstate_idle:
             // done? - quit
             if( !(rectangleCount) )
             {
                 VNCstate = VNCSTATE_CONNECTED_REFRESH;
-                return;
+                return 0;
             }
 
             // read rectangle header
             if( dataSize < 12 )
-                return;
+                return 0;
 
             rectangleCount--;
 
@@ -718,274 +524,245 @@ void pixelProcessor(void)
                 dataPtr[10] != 0x00 )
             {
               TransmitByte('R');
-              return;
+              return 0;
             }
 
             // get the encoding type
             switch( dataPtr[11] )
             {
               case 0:  // raw
-                goto decodeRaw;
-                break;
+                  // if anything raw is received, drop all the pixels and continue
+                  // number of pixels = width * height
+                  interPixelCount = ((dataPtr[4]<<8) + dataPtr[5]) ;
+                  interPixelCount *= ((dataPtr[6]<<8) + dataPtr[7]);
+
+                  dataPtr += 12;
+                  dataSize -= 12;
+
+                  VNCpixelProcessorState = VNCPPSTATE_OUTBOUNDS ;
+                  return 1;
 
               case 1:  // CopyRect
-                  goto decodeCopyRect;
-                  break;
+                  dataPtr += 12;
+                  dataSize -= 12;
+                  VNCpixelProcessorState = VNCPPSTATE_COPYRECT;
+
+                  TransmitString("#$copyrect$#");
+
+                  return 1;
 
               case 5:  // hextile
-                goto decodeHextile;
-                break;
+                  dataPtr += 12;
+                  dataSize -= 12;
+
+                  VNCpixelProcessorState = VNCPPSTATE_HEXTILE;
+                  hextileState = HEXTILESTATE_INIT;
+
+                  return 1;
 
               default:
                 TransmitByte('R');
-                return;
+                return 0;
             }
+            break;
 
-            
-decodeRaw:
-            // if anything raw is received, drop all the pixels and continue
-
-            interPixelCount = ((dataPtr[4]<<8) + dataPtr[5]) ;
-            interPixelCount *= ((dataPtr[6]<<8) + dataPtr[7]);
-
-            dataPtr += 12;
-            dataSize -= 12;
-
-            VNCpixelProcessorState = VNCPPSTATE_OUTBOUNDS ;
-
-            return;
-
-
-decodeHextile:
-
-            dataPtr += 12;
-            dataSize -= 12;
-
-            VNCpixelProcessorState = VNCPPSTATE_HEXTILE;
-            hextileState = HEXTILESTATE_INIT;
-
-            processHextile();
-
-            if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
-            {
-                //TransmitByte('H');
-                goto vncppstate_idle;
-            }
-
-            return;
-
-decodeCopyRect:
-            dataPtr += 12;
-            dataSize -= 12;
-            VNCpixelProcessorState = VNCPPSTATE_COPYRECT;
-
-            processCopyRect();
-            TransmitString("#$copyrect$#");
-
-            if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
-            {
-                goto vncppstate_idle;
-            }
-
-            return;
 
         case VNCPPSTATE_OUTBOUNDS:
             // drop all pixels in the current rectangle
-            dropOutOfViewPixels();
+            if(!dropOutOfViewPixels())
+                return 0;
 
             // when finished, go back to the idle state
             if( interPixelCount == 0)
             {
                 VNCpixelProcessorState = VNCPPSTATE_IDLE;
                     TransmitByte('O');
-
-                goto vncppstate_idle;
             }
             break;
 
-
         case VNCPPSTATE_HEXTILE:
-          processHextile();
-
-          if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
-          {
-              goto vncppstate_idle;
-          }
-          break;
+            while( processHextile() );
+            return 0;
 
         case VNCPPSTATE_COPYRECT:
-          processCopyRect();
-
-          if( VNCpixelProcessorState == VNCPPSTATE_IDLE )
-          {
-              goto vncppstate_idle;
-          }
+          if(!processCopyRect())
+              return 0;
           break;
-
 
         default:
             // shouldn't be here
             break;
+    }
+
+    return 1;
+}
+
+
+// returns 0 if not enough data in buffer to process
+int Vnc_StateMachine(void)
+{
+    switch(VNCstate)
+    {
+        case VNCSTATE_NOTCONNECTED:
+            if( dataSize >= 12 )
+            {
+                VNCstate = VNCSTATE_WAITFORAUTHTYPE;
+                dataPtr += 12;
+                dataSize -= 12;
+                return 1;
+            }
+            return 0;
+
+        case VNCSTATE_WAITFORAUTHTYPE:
+            if( dataSize >= 4 )
+            {
+                if( dataPtr[3] == 0x02 )
+                    VNCstate = VNCSTATE_WAITFORVNCAUTHWORD;
+                // no authentication
+                else if( dataPtr[3] == 0x01 )
+                {
+                    TransmitString("noauth");
+                    VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
+                    VNCstate = VNCSTATE_SENTCLIENTINITMESSAGE;
+                }
+                else VNCstate = VNCSTATE_AUTHFAILED;
+
+                dataPtr += 4;
+                dataSize -= 4;
+
+                return 1;
+            }
+            return 0;
+
+        case VNCSTATE_WAITFORVNCAUTHWORD:
+            if( dataSize >= 16 )
+            {
+                VNCstate = VNCSTATE_WAITFORVNCAUTHRESPONSE;
+                dataPtr += 16;
+                dataSize -= 16;
+                return 1;
+            }
+            return 0;
+
+        case VNCSTATE_WAITFORVNCAUTHRESPONSE:
+            if( dataSize >= 4 )
+            {
+                if( dataPtr[3] == 0x00 )
+                    VNCstate = VNCSTATE_SENTCLIENTINITMESSAGE;
+                else VNCstate = VNCSTATE_AUTHFAILED;
+                dataPtr += 4;
+                dataSize -= 4;
+                return 1;
+            }
+            return 0;
+
+        case VNCSTATE_SENTCLIENTINITMESSAGE:
+            if( dataSize >= 24 )
+            {
+                // ignore framebuffer-width/height, pixel-format
+
+                // use interPixelCount to keep track of the name length
+                interPixelCount = dataPtr[20];
+                interPixelCount <<= 8;
+                interPixelCount |= dataPtr[21];
+                interPixelCount <<= 8;
+                interPixelCount |= dataPtr[22];
+                interPixelCount <<= 8;
+                interPixelCount |= dataPtr[23];
+
+                VNCstate = VNCSTATE_WAITFORSERVERNAME;
+                dataPtr += 24;
+                dataSize -= 24;
+
+                TransmitString("ipc:");
+                TransmitHex(interPixelCount/256);
+                TransmitHex(interPixelCount);
+                TransmitString(" ");
+
+                return 1;
+            }
+            return 0;
+
+        case VNCSTATE_WAITFORSERVERNAME:
+            if( dataSize >= interPixelCount)
+            {
+                TransmitString("ipc:");
+                TransmitHex(interPixelCount/256);
+                TransmitHex(interPixelCount);
+                TransmitString(" ");
+
+
+                TransmitString("name:");
+                for(int i=0; i<interPixelCount; i++)
+                {
+                    TransmitByte(dataPtr[i]);
+                    //TransmitByte(' ');
+                }
+                TransmitString(":: ");
+
+                // remove the name from the buffer (and ignore)
+                dataPtr += interPixelCount;
+                dataSize -= interPixelCount;
+
+                VNCstate = VNCSTATE_CONNECTED;
+                return 1;
+            }
+            return 0;
+
+        case VNCSTATE_CONNECTED:
+            VNCstate = VNCSTATE_WAITFORUPDATE ;
+            return 1;
+
+        case VNCSTATE_CONNECTED_REFRESH:
+        case VNCSTATE_WAITFORUPDATE:
+            // data should be FrameBufferUpdate
+            if( dataSize >= 4 )
+            {
+                // currently only looks for framebufferupdates, anything else breaks
+                if( dataPtr[0] != 0x00 )
+                {
+                    TransmitString("unrec\n\r");
+                    VNCstate = VNCSTATE_DEAD;
+                    return 0;
+                }
+
+                rectangleCount = (dataPtr[2]<<8) + dataPtr[3];
+
+                dataSize -= 4;
+                dataPtr += 4;
+
+                VNCpixelProcessorState = VNCPPSTATE_IDLE;
+                VNCstate = VNCSTATE_PROCESSINGUPDATE;
+
+#if 0
+                TransmitString("fb:");
+                TransmitHex(rectangleCount/256);
+                TransmitHex(rectangleCount);
+                TransmitString(" ");
+#endif
+                return 1;
+            }
+            return 0;
+
+        case VNCSTATE_PROCESSINGUPDATE:
+            while( pixelProcessor() );
+            return 0;
+
+        default:
+            TransmitString("err:pro");
+            dataSize = 0;
+            while(1);
+            return 0;
     }
 }
 
 
 unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length)
 {
-    // init pointer to appdata - remainder
     dataPtr = buffer;
-
-    // init total to appdata + remainder
     dataSize = length;
 
-    do {
-        switch(VNCstate)
-        {
-            case VNCSTATE_NOTCONNECTED:
-                if( dataSize >= 12 )
-                {
-                    VNCstate = VNCSTATE_WAITFORAUTHTYPE;
-                    dataPtr += 12;
-                    dataSize -= 12;
-                }
-                break;
-
-            case VNCSTATE_WAITFORAUTHTYPE:
-                if( dataSize >= 4 )
-                {
-                    if( dataPtr[3] == 0x02 )
-                        VNCstate = VNCSTATE_WAITFORVNCAUTHWORD;
-                    // no authentication
-                    else if( dataPtr[3] == 0x01 )
-                    {
-                        TransmitString("noauth");
-                        VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
-                        VNCstate = VNCSTATE_SENTCLIENTINITMESSAGE;
-                    }
-                    else VNCstate = VNCSTATE_AUTHFAILED;
-
-                    dataPtr += 4;
-                    dataSize -= 4;
-                }
-                break;
-
-            case VNCSTATE_WAITFORVNCAUTHWORD:
-                if( dataSize >= 16 )
-                {
-                    VNCstate = VNCSTATE_WAITFORVNCAUTHRESPONSE;
-                    dataPtr += 16;
-                    dataSize -= 16;
-                }
-                break;
-
-            case VNCSTATE_WAITFORVNCAUTHRESPONSE:
-                if( dataSize >= 4 )
-                {
-                    if( dataPtr[3] == 0x00 )
-                        VNCstate = VNCSTATE_SENTCLIENTINITMESSAGE;
-                    else VNCstate = VNCSTATE_AUTHFAILED;
-                    dataPtr += 4;
-                    dataSize -= 4;
-                }
-                break;
-
-            case VNCSTATE_SENTCLIENTINITMESSAGE:
-                if( dataSize >= 24 )
-                {
-                    // ignore framebuffer-width/height, pixel-format
-
-                    // use interPixelCount to keep track of the name length
-                    interPixelCount = dataPtr[20];
-                    interPixelCount <<= 8;
-                    interPixelCount |= dataPtr[21];
-                    interPixelCount <<= 8;
-                    interPixelCount |= dataPtr[22];
-                    interPixelCount <<= 8;
-                    interPixelCount |= dataPtr[23];
-
-                    VNCstate = VNCSTATE_WAITFORSERVERNAME;
-                    dataPtr += 24;
-                    dataSize -= 24;
-
-                    TransmitString("ipc:");
-                    TransmitHex(interPixelCount/256);
-                    TransmitHex(interPixelCount);
-                    TransmitString(" ");
-                }
-                break;
-
-            case VNCSTATE_WAITFORSERVERNAME:
-                if( dataSize >= interPixelCount)
-                {
-                    TransmitString("ipc:");
-                    TransmitHex(interPixelCount/256);
-                    TransmitHex(interPixelCount);
-                    TransmitString(" ");
-
-
-                    TransmitString("name:");
-                    for(int i=0; i<interPixelCount; i++)
-                    {
-                        TransmitByte(dataPtr[i]);
-                        //TransmitByte(' ');
-                    }
-                    TransmitString(":: ");
-
-                    // remove the name from the buffer (and ignore)
-                    dataPtr += interPixelCount;
-                    dataSize -= interPixelCount;
-
-                    VNCstate = VNCSTATE_CONNECTED;
-                }
-                break;
-
-            case VNCSTATE_CONNECTED:
-                VNCstate = VNCSTATE_WAITFORUPDATE ;
-                break;
-
-            case VNCSTATE_CONNECTED_REFRESH:
-            case VNCSTATE_WAITFORUPDATE:
-                // data should be FrameBufferUpdate
-                if( dataSize >= 4 )
-                {
-                    // currently only looks for framebufferupdates, anything else breaks
-                    if( dataPtr[0] != 0x00 )
-                    {
-                        TransmitString("unrec\n\r");
-                        VNCstate = VNCSTATE_DEAD;
-                        return 0;
-                    }
-
-                    rectangleCount = (dataPtr[2]<<8) + dataPtr[3];
-
-                    dataSize -= 4;
-                    dataPtr += 4;
-
-                    VNCpixelProcessorState = VNCPPSTATE_IDLE;
-                    VNCstate = VNCSTATE_PROCESSINGUPDATE;
-
-#if 0
-                    TransmitString("fb:");
-                    TransmitHex(rectangleCount/256);
-                    TransmitHex(rectangleCount);
-                    TransmitString(" ");
-#endif
-                }
-
-                break;
-
-            case VNCSTATE_PROCESSINGUPDATE:
-                pixelProcessor();
-                break;
-
-            default:
-                TransmitString("err:pro");
-                dataSize = 0;
-                while(1);
-                break;
-        }
-    }
-    while( dataSize > REMAINDERBUFFER_SIZE ) ;
+    while( Vnc_StateMachine() ) ;
 
     // copy any remainder data into the remainder buffer
     return dataSize;
