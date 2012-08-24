@@ -36,7 +36,7 @@ different port or bit, change the macros below:
 
 static uchar  currentPosition, bytesRemaining;
 
-#define READ_WRITE_BUFFER_SIZE  64
+#define READ_WRITE_BUFFER_SIZE  230
 static uchar readWriteBuffer[READ_WRITE_BUFFER_SIZE];
 
 usbMsgLen_t usbFunctionSetup(uchar data[8])
