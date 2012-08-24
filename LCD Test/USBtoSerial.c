@@ -37,6 +37,7 @@
 #include "USBtoSerial.h"
 #include <util/delay.h>
 #include "SpiLcd.h"
+#include "ParallelLcd.h"
 #include "vnc.h"
 
 /** Circular buffer to hold data from the host before it is sent to the device via the serial port. */

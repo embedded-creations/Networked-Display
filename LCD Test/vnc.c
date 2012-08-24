@@ -860,4 +860,5 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 void Vnc_Init(void)
 {
     VncDisplay_Init();
+    ParallelDisplay_Init();
 }
