@@ -8,10 +8,11 @@
 # This Revision: $Id: Makefile 692 2008-11-07 15:07:40Z cs $
 
 DEVICE  = atmega8
-F_CPU   = 12000000	# in Hz
+F_CPU   = 16000000	# in Hz
 FUSE_L  = # see below for fuse values for particular devices
 FUSE_H  = 
-AVRDUDE = avrdude -c stk500v2 -p $(DEVICE) # edit this line for your programmer
+#AVRDUDE = avrdude -c stk500v2 -p $(DEVICE) # edit this line for your programmer
+AVRDUDE = avrdude -c usbasp -p $(DEVICE) # edit this line for your programmer
 
 CFLAGS  = -Iusbdrv -I. -DDEBUG_LEVEL=0
 OBJECTS = usbdrv/usbdrv.o usbdrv/usbdrvasm.o usbdrv/oddebug.o main.o
