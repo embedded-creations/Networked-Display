@@ -103,6 +103,8 @@ int main(void)
     LEDs_SetAllLEDs(LEDMASK_USB_NOTREADY);
     sei();
 
+    TransmitString("Init!");
+
     for (;;)
     {
         if(usbConnectionReset)
@@ -206,11 +208,10 @@ void SetupHardware(void)
     uint8_t ConfigMask = ((1 << UCSZ11) | (1 << UCSZ10));
 
     /* Reconfigure the USART in double speed mode for a wider baud rate range at the expense of accuracy */
-#if 0
     UCSR1C = ConfigMask;
     UCSR1A = (1 << U2X1);
     UCSR1B = ((1 << RXCIE1) | (1 << TXEN1) | (1 << RXEN1));
-#endif
+
     USB_Init();
 
     /* Start the flush timer so that overflows occur rapidly to push received bytes to the USB interface */
