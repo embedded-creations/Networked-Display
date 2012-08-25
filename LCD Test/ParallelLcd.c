@@ -1,8 +1,8 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-#define PLCD_DATA_DDR       DDRD
-#define PLCD_DATA_PORT      PORTD
+#define PLCD_DATA_DDR       DDRB
+#define PLCD_DATA_PORT      PORTB
 
 #define PLCD_CONTROL_DDR    DDRF
 #define PLCD_CONTROL_PORT   PORTF
