@@ -103,7 +103,7 @@ int main(void)
     LEDs_SetAllLEDs(LEDMASK_USB_NOTREADY);
     sei();
 
-    TransmitString("Init!");
+    DEBUG_PRINTSTRING("Init!");
 
     for (;;)
     {
@@ -143,7 +143,7 @@ int main(void)
             if (CDC_Device_SendByte(&VirtualSerial_CDC_Interface,
                                     vncResponseBuffer[i]) != ENDPOINT_READYWAIT_NoError)
             {
-                TransmitString("TXfull");
+                DEBUG_PRINTSTRING("TXfull");
                 if(i != 0)
                 {
                     memcpy(vncResponseBuffer, vncResponseBuffer + i,
@@ -222,12 +222,12 @@ void SetupHardware(void)
 void EVENT_USB_Device_Connect(void)
 {
     LEDs_SetAllLEDs(LEDMASK_USB_ENUMERATING);
-    Serial_SendByte('E');
+    DEBUG_PRINTBYTE('E');
 }
 
 void EVENT_CDC_Device_ControLineStateChanged(USB_ClassInfo_CDC_Device_t* const CDCInterfaceInfo)
 {
-    Serial_SendByte('!');
+    DEBUG_PRINTBYTE('!');
 
     // we can assume we just lost or gained connection with the VNC server, clear any buffers we have
     usbConnectionReset = true;
@@ -291,11 +291,11 @@ void TransmitHex(unsigned char data)
     temp >>= 4;
 
     if(temp >= 0x0A)
-        TransmitByte('A' + temp - 0x0A);
-    else TransmitByte('0' + temp);
+        DEBUG_PRINTBYTE('A' + temp - 0x0A);
+    else DEBUG_PRINTBYTE('0' + temp);
 
     temp = data & 0x0F;
     if(temp >= 0x0A)
-        TransmitByte('A' + temp - 0x0A);
-    else TransmitByte('0' + temp);
+        DEBUG_PRINTBYTE('A' + temp - 0x0A);
+    else DEBUG_PRINTBYTE('0' + temp);
 }

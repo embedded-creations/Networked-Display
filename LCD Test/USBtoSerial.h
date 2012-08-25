@@ -73,10 +73,19 @@
 
 		void EVENT_CDC_Device_LineEncodingChanged(USB_ClassInfo_CDC_Device_t* const CDCInterfaceInfo);
 
-		void TransmitString(char * string);
-		void TransmitByte(unsigned char byte);
-		void TransmitHex(unsigned char data);
+        void TransmitString(char * string);
+        void TransmitByte(unsigned char byte);
+        void TransmitHex(unsigned char data);
 
+#if 0
+        #define DEBUG_PRINTSTRING(s)    TransmitString(s)
+        #define DEBUG_PRINTBYTE(b)      TransmitByte(b)
+        #define DEBUG_PRINTHEX(h)       TransmitHex(h)
+#else
+        #define DEBUG_PRINTSTRING(s)
+        #define DEBUG_PRINTBYTE(b)
+        #define DEBUG_PRINTHEX(h)
+#endif
 
 #endif
 

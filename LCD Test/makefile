@@ -139,6 +139,7 @@ SRC = $(TARGET).c                                                 \
 	  Descriptors.c                                               \
 	  ParallelLcd.c                                               \
 	  SpiLcd.c                                                    \
+	  VncDisplay.c                                                \
 	  vnc.c                                                    	  \
 	  $(LUFA_SRC_USB)                                             \
 	  $(LUFA_SRC_USBCLASS)

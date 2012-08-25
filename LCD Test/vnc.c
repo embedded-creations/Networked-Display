@@ -24,17 +24,9 @@
 
 
 #include "vnc.h"
-#include "SpiLcd.h"
-#include "ParallelLcd.h"
+#include "VncDisplay.h"
 
 #include "USBtoSerial.h"
-
-
-#define VNC_LCD_SPI         0
-#define VNC_LCD_PARALLEL    1
-
-#define VNC_LCD_SELECTION VNC_LCD_PARALLEL
-
 
 
 enum {  VNCSTATE_DEAD,
@@ -354,7 +346,7 @@ int processHextile(void)
 
       if( subencodingByte & HEXTILE_SUBRECT_MASK )
       {
-        //TransmitByte('S');
+        //DEBUG_PRINTBYTE('S');
         numSubrects = *dataPtr++;
         dataSize--;
       }
@@ -477,7 +469,7 @@ int processHextile(void)
         if( tileX < windowX0 || (tileX + tileW) > windowX1 || tileY < windowY0
         || (tileY + tileH) > windowY1 )
         {
-            TransmitString("outofbounds ");
+            DEBUG_PRINTSTRING("outofbounds ");
             hextileState = HEXTILESTATE_DONE ;
             return 1;
         }
@@ -530,7 +522,7 @@ int pixelProcessor(void)
             if( dataPtr[8] != 0x00  || dataPtr[9] != 0x00 ||
                 dataPtr[10] != 0x00 )
             {
-              TransmitByte('R');
+              DEBUG_PRINTBYTE('R');
               return 0;
             }
 
@@ -554,7 +546,7 @@ int pixelProcessor(void)
                   dataSize -= 12;
                   VNCpixelProcessorState = VNCPPSTATE_COPYRECT;
 
-                  TransmitString("#$copyrect$#");
+                  DEBUG_PRINTSTRING("#$copyrect$#");
 
                   return 1;
 
@@ -568,7 +560,7 @@ int pixelProcessor(void)
                   return 1;
 
               default:
-                TransmitByte('R');
+                DEBUG_PRINTBYTE('R');
                 return 0;
             }
             break;
@@ -582,7 +574,7 @@ int pixelProcessor(void)
             if( interPixelCount == 0)
             {
                 VNCpixelProcessorState = VNCPPSTATE_IDLE;
-                    TransmitByte('O');
+                    DEBUG_PRINTBYTE('O');
             }
             break;
 
@@ -627,7 +619,7 @@ int Vnc_StateMachine(void)
                 // no authentication
                 else if( dataPtr[3] == 0x01 )
                 {
-                    TransmitString("noauth");
+                    DEBUG_PRINTSTRING("noauth");
                     VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
                     VNCstate = VNCSTATE_SENTCLIENTINITMESSAGE;
                 }
@@ -680,10 +672,10 @@ int Vnc_StateMachine(void)
                 dataPtr += 24;
                 dataSize -= 24;
 
-                TransmitString("ipc:");
-                TransmitHex(interPixelCount/256);
-                TransmitHex(interPixelCount);
-                TransmitString(" ");
+                DEBUG_PRINTSTRING("ipc:");
+                DEBUG_PRINTHEX(interPixelCount/256);
+                DEBUG_PRINTHEX(interPixelCount);
+                DEBUG_PRINTSTRING(" ");
 
                 return 1;
             }
@@ -692,18 +684,18 @@ int Vnc_StateMachine(void)
         case VNCSTATE_WAITFORSERVERNAME:
             if( dataSize >= interPixelCount)
             {
-                TransmitString("ipc:");
-                TransmitHex(interPixelCount/256);
-                TransmitHex(interPixelCount);
-                TransmitString(" ");
+                DEBUG_PRINTSTRING("ipc:");
+                DEBUG_PRINTHEX(interPixelCount/256);
+                DEBUG_PRINTHEX(interPixelCount);
+                DEBUG_PRINTSTRING(" ");
 
-                TransmitString("name:");
+                DEBUG_PRINTSTRING("name:");
                 for(int i=0; i<interPixelCount; i++)
                 {
-                    TransmitByte(dataPtr[i]);
-                    //TransmitByte(' ');
+                    DEBUG_PRINTBYTE(dataPtr[i]);
+                    //DEBUG_PRINTBYTE(' ');
                 }
-                TransmitString(":: ");
+                DEBUG_PRINTSTRING(":: ");
 
                 // remove the name from the buffer (and ignore)
                 dataPtr += interPixelCount;
@@ -726,7 +718,7 @@ int Vnc_StateMachine(void)
                 // currently only looks for framebufferupdates, anything else breaks
                 if( dataPtr[0] != 0x00 )
                 {
-                    TransmitString("unrec\n\r");
+                    DEBUG_PRINTSTRING("unrec\n\r");
                     VNCstate = VNCSTATE_DEAD;
                     return 0;
                 }
@@ -740,10 +732,10 @@ int Vnc_StateMachine(void)
                 VNCstate = VNCSTATE_PROCESSINGUPDATE;
 
 #if 0
-                TransmitString("fb:");
+                DEBUG_PRINTSTRING("fb:");
                 TransmitHex(rectangleCount/256);
                 TransmitHex(rectangleCount);
-                TransmitString(" ");
+                DEBUG_PRINTSTRING(" ");
 #endif
                 return 1;
             }
@@ -754,7 +746,7 @@ int Vnc_StateMachine(void)
             return 0;
 
         default:
-            TransmitString("err:pro");
+            DEBUG_PRINTSTRING("err:pro");
             dataSize = 0;
             while(1);
             return 0;
@@ -781,7 +773,7 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
         case VNCSENDSTATE_INIT:
             if( VNCstate > VNCSTATE_NOTCONNECTED )
             {
-                TransmitString("s:INIT ");
+                DEBUG_PRINTSTRING("s:INIT ");
                 memcpy_P(buffer, versionMessage, sizeof(versionMessage)-1);
                 VNCsendState = VNCSENDSTATE_VERSIONSENT;
                 return sizeof(versionMessage)-1;
@@ -791,7 +783,7 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
         case VNCSENDSTATE_VERSIONSENT:
             if( VNCstate > VNCSTATE_WAITFORVNCAUTHWORD )
             {
-                TransmitString("s:VSENT ");
+                DEBUG_PRINTSTRING("s:VSENT ");
                 memcpy_P(buffer, VNCauthWord, sizeof(VNCauthWord));
                 VNCsendState = VNCSENDSTATE_AUTHWORDSENT;
                 return sizeof(VNCauthWord);
@@ -801,7 +793,7 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
         case VNCSENDSTATE_AUTHWORDSENT:
             if( VNCstate > VNCSTATE_WAITFORVNCAUTHRESPONSE )
             {
-                TransmitString("s:AWSENT ");
+                DEBUG_PRINTSTRING("s:AWSENT ");
                 buffer[0] = '\0';  // client init message is 0 indicating server should give exclusive access to this client
                 VNCsendState = VNCSENDSTATE_CLIENTINITMESSAGESENT;
                 return 1;
@@ -811,7 +803,7 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
         case VNCSENDSTATE_CLIENTINITMESSAGESENT:
             if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
             {
-                TransmitString("s:CLIMS ");
+                DEBUG_PRINTSTRING("s:CLIMS ");
                 memcpy_P(buffer, pixelFormatMessage, sizeof(pixelFormatMessage));
                 VNCsendState = VNCSENDSTATE_PIXELFORMATSENT;
                 return sizeof(pixelFormatMessage);
@@ -819,10 +811,10 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
             break;
 
         case VNCSENDSTATE_PIXELFORMATSENT:
-            //TransmitString("<-");
+            //DEBUG_PRINTSTRING("<-");
             if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
             {
-                TransmitString("s:PFMSENT ");
+                DEBUG_PRINTSTRING("s:PFMSENT ");
                 memcpy_P(buffer, encodingTypeMessage, sizeof(encodingTypeMessage));
                 VNCsendState = VNCSENDSTATE_ENCODINGTYPESENT;
                 //transmitSpace = 0;
@@ -833,7 +825,7 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
         case VNCSENDSTATE_ENCODINGTYPESENT:
             if( VNCstate > VNCSTATE_WAITFORSERVERNAME )
             {
-                TransmitString("s:ENCTSENT ");
+                DEBUG_PRINTSTRING("s:ENCTSENT ");
                 memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
                 // change the request to a full refresh
                 buffer[1] = 0x00;
@@ -848,9 +840,9 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
             {
 #if 0
                 static uint8_t counter;
-                TransmitString("s:PREFS ");
+                DEBUG_PRINTSTRING("s:PREFS ");
                 TransmitHex(counter++);
-                TransmitByte(' ');
+                DEBUG_PRINTBYTE(' ');
 #endif
                 memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
                 return sizeof(refreshMessage);
@@ -858,7 +850,7 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
             break;
 
         default:
-            TransmitString("err:ACK");
+            DEBUG_PRINTSTRING("err:ACK");
             break;
     }
     return 0;
@@ -867,9 +859,5 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 
 void Vnc_Init(void)
 {
-#if VNC_LCD_SELECTION == VNC_LCD_PARALLEL
-    ParallelDisplay_Init();
-#else
-    VncDisplay_Init();
-#endif
+    VncDisplayInit();
 }

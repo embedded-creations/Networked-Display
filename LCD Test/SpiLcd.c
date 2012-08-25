@@ -315,7 +315,7 @@ void DrawHextile(unsigned char tileW, unsigned char tileH, unsigned char bytes_p
     }
 }
 
-void VncDisplay_Init(void)
+void SpiLcd_Init(void)
 {
     SetupLcd();
     lcd_initial();
