@@ -1,6 +1,11 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
+#include "VncDisplay.h"
+#include "USBtoSerial.h"
+
+#if VNC_LCD_SELECTION == VNC_LCD_PARALLEL
+
 #define PLCD_DATA_DDR       DDRB
 #define PLCD_DATA_PORT      PORTB
 
@@ -93,7 +98,39 @@ void Pant(unsigned int color)
       }
 }
 
-void ParallelDisplay_Init(void)
+
+void SetupTile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsigned char tileH)
+{
+    Address_set(tileX, tileY, tileX + tileW - 1, tileY + tileH - 1);
+}
+
+void DrawRawTile(unsigned int pixelCount, unsigned char bytes_per_pixel, uint8_t pixelBuffer[])
+{
+    for (unsigned int i = 0; i < pixelCount * bytes_per_pixel; i+=bytes_per_pixel)
+    {
+            if(bytes_per_pixel == 1)
+                DEBUG_PRINTSTRING("notsupported");
+            else
+                Lcd_Write_Data(pixelBuffer[i] + pixelBuffer[i+1]*256);
+    }
+}
+
+void DrawHextile(unsigned char tileW, unsigned char tileH, unsigned char bytes_per_pixel, uint8_t hextileBuffer[16][16*bytes_per_pixel])
+{
+    for (unsigned int j = 0; j < tileH; j++)
+    {
+        for (unsigned int i = 0; i < tileW * bytes_per_pixel; i += bytes_per_pixel)
+        {
+            if(bytes_per_pixel == 1)
+                DEBUG_PRINTSTRING("notsupported");
+            else
+                Lcd_Write_Data(hextileBuffer[j][i] + hextileBuffer[j][i+1]*256);
+        }
+    }
+}
+
+
+void LcdInit(void)
 {
     PLCD_CONTROL_PORT |= (1 << PLCD_RESET) | (1 << PLCD_CS) | (1 << PLCD_RD) | (1 << PLCD_WR) | (1 << PLCD_RS);
     PLCD_CONTROL_DDR |= (1 << PLCD_RESET) | (1 << PLCD_CS) | (1 << PLCD_RD) | (1 << PLCD_WR) | (1 << PLCD_RS);
@@ -199,3 +236,4 @@ void ParallelDisplay_Init(void)
 
 }
 
+#endif

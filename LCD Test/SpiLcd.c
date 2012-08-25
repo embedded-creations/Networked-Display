@@ -1,6 +1,12 @@
 #include <avr/io.h>
 #include <util/delay.h>
+
+#include "VncDisplay.h"
+
+#if VNC_LCD_SELECTION == VNC_LCD_SPI
+
 #include "SpiLcd.h"
+
 
 #define DDR_SPI_MOSI     DDRB
 #define PORT_SPI_MOSI    PORTB
@@ -33,7 +39,7 @@ void SPI_MasterTransmit (char cData)
     while (!(SPSR & (1 << SPIF)));
 }
 
-void SetupLcd(void)
+void SpiLcdSetup(void)
 {
     PORT_LCD_A0 |= (1 << DD_A0);
     PORT_LCD_CS |= (1 << DD_LCD_CS);
@@ -52,12 +58,6 @@ void SetupLcd(void)
     // set SCK frequency = fosc/2
     SPSR = (1 << SPI2X);
 }
-
-
-
-
-
-
 
 
 void write_command (uint8_t c)
@@ -319,9 +319,9 @@ void DrawHextile(unsigned char tileW, unsigned char tileH, unsigned char bytes_p
     }
 }
 
-void SpiLcd_Init(void)
+void LcdInit(void)
 {
-    SetupLcd();
+    SpiLcdSetup();
     lcd_initial();
 
     write_command(0x2C); // memory write
@@ -330,3 +330,4 @@ void SpiLcd_Init(void)
     ClearDisplay();
 }
 
+#endif

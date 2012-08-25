@@ -77,7 +77,7 @@
         void TransmitByte(unsigned char byte);
         void TransmitHex(unsigned char data);
 
-#if 0
+#if 1
         #define DEBUG_PRINTSTRING(s)    TransmitString(s)
         #define DEBUG_PRINTBYTE(b)      TransmitByte(b)
         #define DEBUG_PRINTHEX(h)       TransmitHex(h)
