@@ -35,28 +35,31 @@
 
 void Lcd_Write_Data(uint16_t DH)
 {
-    PLCD_DRIVE_RS_HIGH();
-    PLCD_DRIVE_CS_LOW();
+
+    //PLCD_DRIVE_RS_HIGH(); // no need to drive RS high, it is high at init and after every com call
+    //PLCD_DRIVE_CS_LOW();
     PLCD_DATA_PORT = DH >>8; //LCD_DataPortH=DH>>8;
     PLCD_DRIVE_WR_LOW();
     PLCD_DRIVE_WR_HIGH();
     PLCD_DATA_PORT = DH;//LCD_DataPortH=DH;
     PLCD_DRIVE_WR_LOW();
     PLCD_DRIVE_WR_HIGH();
-    PLCD_DRIVE_CS_HIGH();
+    //PLCD_DRIVE_CS_HIGH();
 }
 
+// com is called less frequently than data, leave RS in the data state before leaving so the Data call can be quicker
 void Lcd_Write_Com( uint16_t  DH)
 {
     PLCD_DRIVE_RS_LOW();
-    PLCD_DRIVE_CS_LOW();
+    //PLCD_DRIVE_CS_LOW();
     PLCD_DATA_PORT = DH >>8; //LCD_DataPortH=DH>>8;
     PLCD_DRIVE_WR_LOW();
     PLCD_DRIVE_WR_HIGH();
     PLCD_DATA_PORT = DH;//LCD_DataPortH=DH;
     PLCD_DRIVE_WR_LOW();
     PLCD_DRIVE_WR_HIGH();
-    PLCD_DRIVE_CS_HIGH();
+    //PLCD_DRIVE_CS_HIGH();
+    PLCD_DRIVE_RS_HIGH();
 }
 
 void Lcd_Write_Com_Data( uint16_t com1,uint16_t dat1)
@@ -132,6 +135,7 @@ void DrawHextile(unsigned char tileW, unsigned char tileH, unsigned char bytes_p
 
 void LcdInit(void)
 {
+    // all lines are high by default
     PLCD_CONTROL_PORT |= (1 << PLCD_RESET) | (1 << PLCD_CS) | (1 << PLCD_RD) | (1 << PLCD_WR) | (1 << PLCD_RS);
     PLCD_CONTROL_DDR |= (1 << PLCD_RESET) | (1 << PLCD_CS) | (1 << PLCD_RD) | (1 << PLCD_WR) | (1 << PLCD_RS);
 
@@ -143,6 +147,8 @@ void LcdInit(void)
     PLCD_DRIVE_RESET_HIGH();
     _delay_ms(20);
 
+    // drive CS low here and leave it low (there's only one thing on the bus at this point
+    PLCD_DRIVE_CS_LOW();
 
 
   Lcd_Write_Com_Data(0x0026,0x0084); //PT=10,GON=0, DTE=0, D=0100
