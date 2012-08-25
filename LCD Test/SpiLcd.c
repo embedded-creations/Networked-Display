@@ -6,19 +6,21 @@
 #define PORT_SPI_MOSI    PORTB
 #define DDR_SPI_SCK      DDRB
 #define PORT_SPI_SCK     PORTB
+#define PORT_SPI_SS      PORTB
 
-#define DDR_SPI_SS       DDRD
-#define PORT_SPI_SS      PORTD
-#define DDR_SPI_A0       DDRD
-#define PORT_SPI_A0      PORTD
-#define DDR_SPI_RES      DDRD
-#define PORT_SPI_RES     PORTD
+#define DDR_LCD_CS       DDRD
+#define PORT_LCD_CS      PORTD
+#define DDR_LCD_A0       DDRD
+#define PORT_LCD_A0      PORTD
+#define DDR_LCD_RES      DDRD
+#define PORT_LCD_RES     PORTD
 
 #define DD_MOSI PB2
 #define DD_SCK  PB1
-#define DD_SS   PD4
+#define DD_LCD_CS   PD4
 #define DD_A0   PD5
 #define DD_RES  PD6
+#define DD_SPI_SS   PB0 // not actually connected to the LCD, but needs to be pulled up (low signal on this line sets SPI to slave mode)
 
 
 
@@ -33,14 +35,16 @@ void SPI_MasterTransmit (char cData)
 
 void SetupLcd(void)
 {
-    PORT_SPI_A0 |= (1 << DD_A0);
-    PORT_SPI_SS |= (1 << DD_SS);
-    DDR_SPI_A0 |= (1 << DD_A0);
-    DDR_SPI_SS |= (1 << DD_SS);
+    PORT_LCD_A0 |= (1 << DD_A0);
+    PORT_LCD_CS |= (1 << DD_LCD_CS);
+    DDR_LCD_A0 |= (1 << DD_A0);
+    DDR_LCD_CS |= (1 << DD_LCD_CS);
 
     /* Set MOSI and SCK output, all others input */
     DDR_SPI_MOSI |= (1 << DD_MOSI);
     DDR_SPI_SCK |= (1 << DD_SCK);
+
+    PORT_SPI_SS |= (1 << DD_SPI_SS); // make this pin pulled up to avoid low level during SPI transfer, which would set SPI to slave mode
 
     /* Enable SPI, Master*/
     SPCR = (1 << SPE) | (1 << MSTR);
@@ -58,20 +62,20 @@ void SetupLcd(void)
 
 void write_command (uint8_t c)
 {
-    PORT_SPI_A0 &= ~(1 << DD_A0);
-    PORT_SPI_SS &= ~(1 << DD_SS);
+    PORT_LCD_A0 &= ~(1 << DD_A0);
+    PORT_LCD_CS &= ~(1 << DD_LCD_CS);
 
     SPI_MasterTransmit(c);
-    PORT_SPI_SS |= (1 << DD_SS);
+    PORT_LCD_CS |= (1 << DD_LCD_CS);
 }
 
 void write_data (uint8_t d)
 {
-    PORT_SPI_A0 |= (1 << DD_A0);
-    PORT_SPI_SS &= ~(1 << DD_SS);
+    PORT_LCD_A0 |= (1 << DD_A0);
+    PORT_LCD_CS &= ~(1 << DD_LCD_CS);
 
     SPI_MasterTransmit(d);
-    PORT_SPI_SS |= (1 << DD_SS);
+    PORT_LCD_CS |= (1 << DD_LCD_CS);
 }
 
 void LCD_DataWrite(uint8_t LCD_DataH,uint8_t LCD_DataL)
@@ -107,9 +111,9 @@ void SlowLoadDisplay(void)
 void lcd_initial (void)
 {
     // hardware reset (minimum 10us pulse)
-    DDR_SPI_RES |= (1 << DD_RES);
+    DDR_LCD_RES |= (1 << DD_RES);
     _delay_ms(1);
-    PORT_SPI_RES |= (1 << DD_RES);
+    PORT_LCD_RES |= (1 << DD_RES);
 
     // sleep out command can't be sent for 120ms after releasing Reset
     _delay_ms(120);
