@@ -32,10 +32,10 @@ void Lcd_Write_Data(uint16_t DH)
 {
     PLCD_DRIVE_RS_HIGH();
     PLCD_DRIVE_CS_LOW();
-    PORTD = DH >>8; //LCD_DataPortH=DH>>8;
+    PLCD_DATA_PORT = DH >>8; //LCD_DataPortH=DH>>8;
     PLCD_DRIVE_WR_LOW();
     PLCD_DRIVE_WR_HIGH();
-    PORTD = DH;//LCD_DataPortH=DH;
+    PLCD_DATA_PORT = DH;//LCD_DataPortH=DH;
     PLCD_DRIVE_WR_LOW();
     PLCD_DRIVE_WR_HIGH();
     PLCD_DRIVE_CS_HIGH();
@@ -45,10 +45,10 @@ void Lcd_Write_Com( uint16_t  DH)
 {
     PLCD_DRIVE_RS_LOW();
     PLCD_DRIVE_CS_LOW();
-    PORTD = DH >>8; //LCD_DataPortH=DH>>8;
+    PLCD_DATA_PORT = DH >>8; //LCD_DataPortH=DH>>8;
     PLCD_DRIVE_WR_LOW();
     PLCD_DRIVE_WR_HIGH();
-    PORTD = DH;//LCD_DataPortH=DH;
+    PLCD_DATA_PORT = DH;//LCD_DataPortH=DH;
     PLCD_DRIVE_WR_LOW();
     PLCD_DRIVE_WR_HIGH();
     PLCD_DRIVE_CS_HIGH();

@@ -25,8 +25,15 @@
 
 #include "vnc.h"
 #include "SpiLcd.h"
+#include "ParallelLcd.h"
 
 #include "USBtoSerial.h"
+
+
+#define VNC_LCD_SPI         0
+#define VNC_LCD_PARALLEL    1
+
+#define VNC_LCD_SELECTION VNC_LCD_SPI
 
 
 
@@ -857,8 +864,12 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
     return 0;
 }
 
+
 void Vnc_Init(void)
 {
-    VncDisplay_Init();
+#if VNC_LCD_SELECTION == VNC_LCD_PARALLEL
     ParallelDisplay_Init();
+#else
+    VncDisplay_Init();
+#endif
 }
