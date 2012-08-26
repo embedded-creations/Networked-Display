@@ -58,6 +58,7 @@ int main(void)
     unsigned int vncResponseSize = 0;
 
     SetupHardware();
+    DEBUG_INIT();
     VncServerInit();
     Vnc_Init();
 

@@ -47,15 +47,5 @@
 	/* Function Prototypes: */
 		void SetupHardware(void);
 
-#if 1
-        #define DEBUG_PRINTSTRING(s)    TransmitString(s)
-        #define DEBUG_PRINTBYTE(b)      TransmitByte(b)
-        #define DEBUG_PRINTHEX(h)       TransmitHex(h)
-#else
-        #define DEBUG_PRINTSTRING(s)
-        #define DEBUG_PRINTBYTE(b)
-        #define DEBUG_PRINTHEX(h)
-#endif
-
 #endif
 
