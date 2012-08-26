@@ -41,15 +41,11 @@
 		#include <avr/wdt.h>
 		#include <avr/interrupt.h>
 		#include <avr/power.h>
+        #include "debug.h"
 
 
 	/* Function Prototypes: */
 		void SetupHardware(void);
-
-
-        void TransmitString(char * string);
-        void TransmitByte(unsigned char byte);
-        void TransmitHex(unsigned char data);
 
 #if 1
         #define DEBUG_PRINTSTRING(s)    TransmitString(s)
