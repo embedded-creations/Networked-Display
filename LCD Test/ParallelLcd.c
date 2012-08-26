@@ -2,7 +2,7 @@
 #include <util/delay.h>
 
 #include "VncDisplay.h"
-#include "MicroVnc.h"
+#include "Debug.h"
 
 #if VNC_LCD_SELECTION == VNC_LCD_PARALLEL
 

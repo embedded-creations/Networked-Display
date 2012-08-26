@@ -34,13 +34,16 @@
  *  the project and is responsible for the initial application hardware configuration.
  */
 
-#include "MicroVnc.h"
 #include <util/delay.h>
+#include <avr/wdt.h>
 #include "SpiLcd.h"
 #include "ParallelLcd.h"
 #include "vnc.h"
 #include "VncServerComms.h"
-
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <avr/power.h>
+#include "debug.h"
 
 #define VNC_BUFFER_MAX 200
 
@@ -48,6 +51,22 @@ uint8_t vncBuffer[VNC_BUFFER_MAX];
 uint8_t vncResponseBuffer[MAXIMUM_VNCRESPONSE_SIZE];
 
 unsigned int vncBufferSize = 0;
+
+
+/** Configures the board hardware and chip peripherals for the demo's functionality. */
+void SetupHardware(void)
+{
+    /* Disable watchdog if enabled by bootloader/fuses */
+    MCUSR &= ~(1 << WDRF);
+    wdt_disable();
+
+    /* Disable clock division */
+    clock_prescale_set(clock_div_1);
+
+    /* Hardware Initialization */
+    LEDs_Init();
+}
+
 
 /** Main program entry point. This routine contains the overall program flow, including initial
  *  setup of all components and the main program loop.
@@ -108,19 +127,7 @@ int main(void)
     }
 }
 
-/** Configures the board hardware and chip peripherals for the demo's functionality. */
-void SetupHardware(void)
-{
-    /* Disable watchdog if enabled by bootloader/fuses */
-    MCUSR &= ~(1 << WDRF);
-    wdt_disable();
 
-    /* Disable clock division */
-    clock_prescale_set(clock_div_1);
-
-    /* Hardware Initialization */
-    LEDs_Init();
-}
 
 
 
