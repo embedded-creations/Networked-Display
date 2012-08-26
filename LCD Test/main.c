@@ -34,7 +34,7 @@
  *  the project and is responsible for the initial application hardware configuration.
  */
 
-#include "USBtoSerial.h"
+#include "MicroVnc.h"
 #include <util/delay.h>
 #include "SpiLcd.h"
 #include "ParallelLcd.h"
@@ -69,17 +69,19 @@ int main(void)
     for (;;)
     {
         int response = VncServerGetData(vncBuffer + vncBufferSize, VNC_BUFFER_MAX - vncBufferSize);
+
         if(response < 0)
         {
             // reset system
             vncRemainder = 0;
             vncBufferSize = 0;
             Vnc_ResetSystem();
-
             continue;
         }
         else
+        {
             vncBufferSize += response;
+        }
 
         vncRemainder = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
 

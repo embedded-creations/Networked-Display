@@ -26,7 +26,7 @@
 #include "vnc.h"
 #include "VncDisplay.h"
 
-#include "USBtoSerial.h"
+#include "MicroVnc.h"
 
 
 enum {  VNCSTATE_DEAD,

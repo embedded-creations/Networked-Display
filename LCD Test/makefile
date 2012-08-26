@@ -106,7 +106,7 @@ FORMAT = ihex
 
 
 # Target file name (without extension).
-TARGET = USBtoSerial
+TARGET = MicroVnc
 
 
 # Object files directory
@@ -135,7 +135,7 @@ include $(LUFA_PATH)/LUFA/makefile
 
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c                                                 \
+SRC = main.c                                                 \
 	  Descriptors.c                                               \
 	  ParallelLcd.c                                               \
 	  SpiLcd.c                                                    \
