@@ -102,34 +102,6 @@ int main(void)
         }
         else
             vncResponseSize = 0;
-
-#if 0
-        // modified to make USB loopback
-        /* Check if the UART receive buffer flush timer has expired or the buffer is nearly full */
-        uint16_t BufferCount = RingBuffer_GetCount(&USBtoUSART_Buffer);
-        if ((TIFR0 & (1 << TOV0)) || (BufferCount > (uint8_t)(sizeof(USBtoUSART_Buffer) * (3 / 4))))
-        {
-            /* Clear flush timer expiry flag */
-            TIFR0 |= (1 << TOV0);
-
-            /* Read bytes from the USART receive buffer into the USB IN endpoint */
-            while (BufferCount--)
-            {
-                /* Try to send the next byte of data to the host, abort if there is an error without dequeuing */
-                if (CDC_Device_SendByte(&VirtualSerial_CDC_Interface,
-                                        RingBuffer_Peek(&USBtoUSART_Buffer)) != ENDPOINT_READYWAIT_NoError)
-                {
-                    break;
-                }
-
-                /* Dequeue the already sent byte from the buffer now we have confirmed that no transmission error occurred */
-                RingBuffer_Remove(&USBtoUSART_Buffer);
-            }
-        }
-#endif
-
-
-
     }
 }
 
