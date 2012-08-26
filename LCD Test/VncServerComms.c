@@ -1,5 +1,10 @@
 #include "VncServerComms.h"
+#include <avr/io.h>
 
+volatile bool usbConnectionReset = false;
+
+
+#if 0
 /** Circular buffer to hold data from the host before it is sent to the device via the serial port. */
 static RingBuffer_t USBtoUSART_Buffer;
 
@@ -36,7 +41,6 @@ USB_ClassInfo_CDC_Device_t VirtualSerial_CDC_Interface =
             },
     };
 
-volatile bool usbConnectionReset = false;
 
 
 void VncServerInit(void)
@@ -67,6 +71,7 @@ int16_t VncServerGetData(uint8_t * buffer, uint16_t maxsize)
 
     while(debugcounter > 64)
     {
+        DDRF |= (1 << 0);
         PORTF |= (1 << 0);
         debugcounter -= 64;
         PORTF &= ~(1 << 0);
@@ -156,3 +161,62 @@ ISR(USART1_RX_vect, ISR_BLOCK)
 void EVENT_CDC_Device_LineEncodingChanged(USB_ClassInfo_CDC_Device_t* const CDCInterfaceInfo)
 {
 }
+#else
+
+
+#define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
+
+void VncServerInit(void)
+{
+    CPU_PRESCALE(0);
+    usb_init();
+}
+
+uint16_t debugcounter = 0;
+
+int16_t VncServerGetData(uint8_t * buffer, uint16_t maxsize)
+{
+    uint16_t size = 0;
+
+    if(usbConnectionReset)
+    {
+        usbConnectionReset = false;
+        return -1;
+    }
+
+    while(debugcounter > 64)
+    {
+        DDRF |= (1 << 0);
+        PORTF |= (1 << 0);
+        debugcounter -= 64;
+        PORTF &= ~(1 << 0);
+    }
+
+    while ( size < maxsize )
+    {
+        int n = usb_serial_getchar();
+
+        if(n < 0)
+            break;
+
+        buffer[size++] = (uint8_t)n;
+        debugcounter++;
+    }
+
+    return size;
+}
+
+uint16_t VncServerSendResponse(uint8_t * buffer, uint16_t length)
+{
+    int i;
+    for(i=0; i<length; i++)
+    {
+        usb_serial_putchar(buffer[i]);
+    }
+
+    return i;
+}
+
+
+
+#endif

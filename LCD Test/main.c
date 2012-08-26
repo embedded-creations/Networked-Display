@@ -36,6 +36,7 @@
 
 #include <util/delay.h>
 #include <avr/wdt.h>
+#include <string.h>
 #include "SpiLcd.h"
 #include "ParallelLcd.h"
 #include "vnc.h"
@@ -64,7 +65,7 @@ void SetupHardware(void)
     clock_prescale_set(clock_div_1);
 
     /* Hardware Initialization */
-    LEDs_Init();
+    //LEDs_Init();
 }
 
 
