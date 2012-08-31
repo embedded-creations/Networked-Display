@@ -4,7 +4,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#if 0
+#define VNCSERVER_SOURCE_LUFA_USB       0
+#define VNCSERVER_SOURCE_TEENSY_USB     1
+#define VNCSERVER_SOURCE_UART           2
+
+#define VNCSERVER_SOURCE VNCSERVER_SOURCE_TEENSY_USB
+
+
+
+#if VNCSERVER_SOURCE == VNCSERVER_SOURCE_LUFA_USB
         #include "Descriptors.h"
 
         #include <LUFA/Version.h>

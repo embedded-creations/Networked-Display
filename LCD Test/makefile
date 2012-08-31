@@ -48,6 +48,7 @@ TARGET = MicroVnc
 # List C source files here. (C dependencies are automatically generated.)
 SRC =	main.c \
 	usb_serial.c \
+	buffuart.c \
 	Debug.c \
 	ParallelLcd.c \
 	SpiLcd.c \

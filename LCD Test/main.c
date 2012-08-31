@@ -62,12 +62,13 @@ void SetupHardware(void)
     wdt_disable();
 
     /* Disable clock division */
-    clock_prescale_set(clock_div_1);
+    //clock_prescale_set(clock_div_1);
 
     /* Hardware Initialization */
     //LEDs_Init();
 }
 
+uint16_t debugcounter2 = 0;
 
 /** Main program entry point. This routine contains the overall program flow, including initial
  *  setup of all components and the main program loop.
@@ -102,6 +103,7 @@ int main(void)
         {
             vncBufferSize += response;
         }
+
 
         vncRemainder = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
 

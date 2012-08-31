@@ -1,5 +1,9 @@
 #include <string.h>
-#include <LUFA/Drivers/Peripheral/Serial.h>
+#include <avr/io.h>
+#include "Debug.h"
+
+
+#if DEBUGOUTPUT_TARGET == DEBUGOUTPUT_LUFA_UART
 
 void TransmitString(char * string)
 {
@@ -39,3 +43,5 @@ void DebugInit(void)
     UCSR1A = (1 << U2X1);
     UCSR1B = ((1 << RXCIE1) | (1 << TXEN1) | (1 << RXEN1));
 }
+
+#endif
