@@ -45,6 +45,7 @@
 #include <avr/interrupt.h>
 #include <avr/power.h>
 #include "debug.h"
+#include "Buttons.h"
 
 #define VNC_BUFFER_MAX 200
 
@@ -65,7 +66,7 @@ void SetupHardware(void)
     //clock_prescale_set(clock_div_1);
 
     /* Hardware Initialization */
-    //LEDs_Init();
+    Buttons_Init();
 }
 
 uint16_t debugcounter2 = 0;
@@ -111,6 +112,8 @@ int main(void)
         memcpy(vncBuffer, vncBuffer + (vncBufferSize - vncRemainder), vncRemainder);
 
         vncBufferSize = vncRemainder;
+
+        Buttons_Handler();
 
         // collect any data to send to the Vnc server and send it
         if(!vncResponseSize)

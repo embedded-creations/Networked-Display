@@ -50,6 +50,7 @@ SRC =	main.c \
 	usb_serial.c \
 	buffuart.c \
 	Debug.c \
+	Buttons.c \
 	ParallelLcd.c \
 	SpiLcd.c \
 	vnc.c \
