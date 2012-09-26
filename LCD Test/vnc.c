@@ -746,9 +746,7 @@ int Vnc_StateMachine(void)
 
         default:
             DEBUG_PRINTSTRING("err:pro");
-            dataSize = 0;
-            while(1);
-            return 0;
+            return -1;
     }
 }
 
@@ -758,10 +756,19 @@ unsigned int Vnc_ProcessVncBuffer(uint8_t * buffer, unsigned int length)
     dataPtr = buffer;
     dataSize = length;
 
-    while( Vnc_StateMachine() ) ;
+    int retval;
+
+    do
+    {
+        retval = Vnc_StateMachine();
+    }
+    while( retval > 0 ) ;
 
     // copy any remainder data into the remainder buffer
-    return dataSize;
+    if(retval == 0)
+        return dataSize;
+    else
+        return retval;
 }
 
 
@@ -850,6 +857,8 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
 
         default:
             DEBUG_PRINTSTRING("err:ACK");
+            VNCstate = VNCSTATE_NOTCONNECTED;
+            VNCsendState = VNCSENDSTATE_INIT;
             break;
     }
     return 0;

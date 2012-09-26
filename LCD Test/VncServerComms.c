@@ -1,6 +1,7 @@
 #include "VncServerComms.h"
 #include <avr/io.h>
 #include "buffuart.h"
+#include "Debug.h"
 
 volatile bool usbConnectionReset = false;
 
@@ -177,14 +178,19 @@ void VncServerInit(void)
 
 uint16_t debugcounter = 0;
 
+int lastControlState = 0;
+
 int16_t VncServerGetData(uint8_t * buffer, uint16_t maxsize)
 {
     uint16_t size = 0;
 
-    if(usbConnectionReset)
+    if(lastControlState != usb_serial_get_control())
     {
-        usbConnectionReset = false;
-        return -1;
+        lastControlState = usb_serial_get_control();
+
+        // return error if a disconnect from the VNC server is detected
+        if(lastControlState == 0)
+            return -1;
     }
 
     while(debugcounter > 64)

@@ -78,6 +78,7 @@ int main(void)
 {
     unsigned int vncRemainder;
     unsigned int vncResponseSize = 0;
+    int retval;
 
     SetupHardware();
     DEBUG_INIT();
@@ -98,6 +99,7 @@ int main(void)
             vncRemainder = 0;
             vncBufferSize = 0;
             Vnc_ResetSystem();
+            DEBUG_PRINTSTRING("ResetSystem ");
             continue;
         }
         else
@@ -106,7 +108,19 @@ int main(void)
         }
 
 
-        vncRemainder = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
+        retval = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
+
+        if (vncRemainder < 0)
+        {
+            // reset system
+            vncRemainder = 0;
+            vncBufferSize = 0;
+            Vnc_ResetSystem();
+            DEBUG_PRINTSTRING("ResetSystem2 ");
+            continue;
+        }
+
+        vncRemainder = (unsigned int)retval;
 
         // move unused data to the front of the buffer
         memcpy(vncBuffer, vncBuffer + (vncBufferSize - vncRemainder), vncRemainder);
