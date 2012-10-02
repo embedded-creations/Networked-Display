@@ -85,11 +85,7 @@ void checkKeypressFile() {
       MappedByteBuffer buf = channel.map(MapMode.READ_WRITE, 0,1);
 
       buf.get(tempbuffer);
-      if(tempbuffer[0] != 0x00)
-      {
-          print(tempbuffer[0]);
-      
-      }
+
       if(tempbuffer[0] >= 'a' && tempbuffer[0] <= 'z')
       {
         print(tempbuffer[0]);
@@ -140,30 +136,19 @@ void interpretKeypress(int key)
     }
 }
 
-
-
 color fillColor = color(random(255), random(255), random(255), 255);
-color outlineColor = color(random(255), random(255), random(255), 255);
-
-int colorMode = 0;
 
 void draw() 
 {
-  //interpretKeypress();
-
   fill(0, 2);
-  //rect(0, 0, width, height);
   pct += step;
   if (pct < 1.0) {
     x = beginX + (pct * distX);
     y = beginY + (pow(pct, exponent) * distY);
-//  fill(color(random(255), random(255), random(255), random(255)));
-    //fill(color(random(255), random(255), random(255), 255));
   }
   else
   {
-      outlineColor = color(random(255), random(255), random(255), 255);
-  checkKeypressFile();
+    checkKeypressFile();
 
     pct = 0.0;
     beginX = x;
@@ -173,11 +158,7 @@ void draw()
     distX = endX - beginX;
     distY = endY - beginY;
   }
-//  fill(outlineColor);
-//  if(shapeType == 0)
-//    ellipse(x, y, shapeWidth + 1, shapeHeight + 1);
-//  else
-//    rect(x, y, shapeWidth/2 + 1, shapeHeight/2 + 1);
+
   fillColor = color(random(255), random(255), random(255), 255);
 
   fill(fillColor);
