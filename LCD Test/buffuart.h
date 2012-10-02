@@ -14,7 +14,7 @@
 #define _BUFFUART_H_
 
 
-#define UART_BAUD_RATE      57600
+#define UART_BAUD_RATE      38400
 
 #define UART_BAUD_SELECT 		(F_CPU/(UART_BAUD_RATE*16l)-1)
 
