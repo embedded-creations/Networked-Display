@@ -107,7 +107,6 @@ int main(void)
             vncBufferSize += response;
         }
 
-
         retval = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
 
         if (vncRemainder < 0)

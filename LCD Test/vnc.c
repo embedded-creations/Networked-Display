@@ -26,6 +26,7 @@
 #include "vnc.h"
 #include "VncDisplay.h"
 #include "Debug.h"
+#include "Buttons.h"
 
 
 enum {  VNCSTATE_DEAD,
@@ -105,12 +106,14 @@ prog_uchar pixelFormatMessage[] = VNC_PIXEL_FORMAT_MESSAGE_16BIT;
 // partial refresh request
 prog_char refreshMessage[] = { 0x03,0x01,0,0,0,0,SCREEN_WIDTH/256,SCREEN_WIDTH,SCREEN_HEIGHT/256,SCREEN_HEIGHT };
 
+// keypress messages
+prog_char keypressMessageR[] = { 0x04,0x01,0,0, 0,0,0,'r'};
+prog_char keypressMessageA[] = { 0x04,0x01,0,0, 0,0,0,'a'};
+prog_char keypressMessageB[] = { 0x04,0x01,0,0, 0,0,0,'b'};
+prog_char keypressMessageC[] = { 0x04,0x01,0,0, 0,0,0,'c'};
 
 // requests hextile encoding only
 prog_uchar encodingTypeMessage[] = VNC_ENCODING_TYPE_HEXTILE_AND_COPYRECT;
-
-
-
 
 
 // counters used to keep track of how many pixels and rectangles to go before
@@ -850,8 +853,23 @@ unsigned int Vnc_LoadResponseBuffer(uint8_t * buffer)
                 TransmitHex(counter++);
                 DEBUG_PRINTBYTE(' ');
 #endif
-                memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
-                return sizeof(refreshMessage);
+                // if a keypress message is ready to send out, send it in place of the refresh message
+                if(keypress != 0)
+                {
+                    if(keypress == 'a')
+                        memcpy_P(buffer, keypressMessageR, sizeof(keypressMessageR));
+                    if(keypress == 'b')
+                        memcpy_P(buffer, keypressMessageA, sizeof(keypressMessageR));
+                    if(keypress == 'c')
+                        memcpy_P(buffer, keypressMessageB, sizeof(keypressMessageR));
+                    keypress = 0;
+                    return sizeof(keypressMessageR);
+                }
+                else
+                {
+                    memcpy_P(buffer, refreshMessage, sizeof(refreshMessage));
+                    return sizeof(refreshMessage);
+                }
             }
             break;
 
