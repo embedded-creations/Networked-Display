@@ -74,6 +74,45 @@ static void newframebuffer (rfbScreenInfoPtr screen, int width, int height)
     free(oldfb);
 }
 
+static void initBuffer(unsigned char* buffer)
+{
+  int i,j;
+  for(j=0;j<maxy;++j) {
+    for(i=0;i<maxx;++i) {
+      buffer[(j*maxx+i)*bpp+0]=(i+j)*128/(maxx+maxy); /* red */
+      buffer[(j*maxx+i)*bpp+1]=i*128/maxx; /* green */
+      buffer[(j*maxx+i)*bpp+2]=j*256/maxy; /* blue */
+    }
+    buffer[j*maxx*bpp+0]=0xff;
+    buffer[j*maxx*bpp+1]=0xff;
+    buffer[j*maxx*bpp+2]=0xff;
+    buffer[j*maxx*bpp+3]=0xff;
+  }
+}
+
+uint8_t savedkeypress = 0;
+
+static void dokey(rfbBool down, rfbKeySym key, rfbClientPtr cl)
+{
+    if(down) {
+    if(key==XK_Escape)
+      rfbCloseClient(cl);
+    else if(key==XK_a || key==XK_b || key==XK_c || key==XK_r) {
+      uint8_t keyPress = key;
+      const char * filename = "c:\\vncinput.bin";
+      FILE * ft = fopen(filename, "wb");
+      if(ft)
+      {
+          fwrite(&keyPress, 1, 1, ft);
+          fclose(ft);
+      }
+      else
+          // the file is locked, record the press and write it to the file later
+          savedkeypress = keyPress;
+    }
+  }
+}
+
 /* Initialization */
 
 int runonce = 0;
@@ -87,6 +126,7 @@ int main (int argc, char** argv)
     rfbScreen->frameBuffer = (char*)malloc(maxx * maxy * bpp);
     rfbScreen->alwaysShared = TRUE;
     rfbScreen->newClientHook = newclient;
+    rfbScreen->kbdAddEvent = dokey;
 
     /* initialize the server */
     rfbInitServer(rfbScreen);
@@ -98,8 +138,21 @@ int main (int argc, char** argv)
     {
         sleep(5);
 
-        const char * filename = "pixelbuffer.bin";
-        char mytext[ 100 ];
+        // try again to open the file and write a keypress we captured in dokey() but was locked before
+        if(savedkeypress)
+        {
+            const char * filename = "c:\\vncinput.bin";
+
+            FILE * ft = fopen(filename, "wb");
+            if(ft)
+            {
+                fwrite(&savedkeypress, 1, 1, ft);
+                fclose(ft);
+                savedkeypress = 0;
+            }
+        }
+
+        const char * filename = "c:\\pixelbuffer.bin";
         unsigned char pixelbuffer[ maxx * maxy * bpp ];
         int byteswritten = 0;
         FILE * ft = fopen(filename, "rb");
