@@ -188,6 +188,11 @@ int16_t VncServerGetData(uint8_t * buffer, uint16_t maxsize)
     {
         lastControlState = usb_serial_get_control();
 
+        if(usb_serial_get_control() & USB_SERIAL_DTR)
+            usb_serial_set_control(USB_SERIAL_DSR);
+        else
+            usb_serial_set_control(0);
+
         // return error if a disconnect from the VNC server is detected
         if(lastControlState == 0)
             return -1;
