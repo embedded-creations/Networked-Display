@@ -1,10 +1,10 @@
 /**
  * @example example.c
  * This is an example of how to use libvncserver.
- * 
+ *
  * libvncserver example
  * Copyright (C) 2001 Johannes E. Schindelin <Johannes.Schindelin@gmx.de>
- * 
+ *
  *  This is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -34,6 +34,8 @@
 
 #include <rfb/rfb.h>
 #include <rfb/keysym.h>
+
+#include <wand/magick_wand.h>
 
 #include <stdio.h>
 
@@ -119,6 +121,9 @@ int runonce = 0;
 
 int main (int argc, char** argv)
 {
+    MagickWand *mw = NULL;
+
+
     rfbScreenInfoPtr rfbScreen = rfbGetScreen(&argc, argv, maxx, maxy, 8, 3, bpp);
     if (!rfbScreen)
         return 0;
@@ -127,6 +132,15 @@ int main (int argc, char** argv)
     rfbScreen->alwaysShared = TRUE;
     rfbScreen->newClientHook = newclient;
     rfbScreen->kbdAddEvent = dokey;
+
+    MagickWandGenesis();
+
+    /* Create a wand */
+    mw = NewMagickWand();
+
+    /* Read the input image */
+    MagickReadImage(mw,"input.bmp");
+
 
     /* initialize the server */
     rfbInitServer(rfbScreen);
@@ -210,6 +224,9 @@ int main (int argc, char** argv)
 
     free(rfbScreen->frameBuffer);
     rfbScreenCleanup(rfbScreen);
+
+    if(mw) mw = DestroyMagickWand(mw);
+    MagickWandTerminus();
 
     return (0);
 }
