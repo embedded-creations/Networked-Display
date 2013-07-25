@@ -39,7 +39,7 @@
 
 #include <stdio.h>
 
-static const int bpp = 4;
+static const int bpp = 1;
 static int maxx = 160, maxy = 150;
 
 /* Here we create a structure so that every client has it's own pointer */
@@ -172,9 +172,7 @@ int main (int argc, char** argv)
         initBuffer(pixelbuffer);
         int byteswritten = 0;
         //FILE * ft = fopen(filename, "rb");
-      int ret = MagickExportImagePixels(mw,0,0,160,150,"RGBA",CharPixel,pixelbuffer);
-
-      printf("ret = %d", ret);
+        MagickExportImagePixels(mw,0,0,160,150,"R",CharPixel,pixelbuffer);
 
         //if (ft)
         {
