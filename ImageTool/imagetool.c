@@ -40,7 +40,7 @@
 #include <stdio.h>
 
 static const int bpp = 4;
-static int maxx = 128, maxy = 160;
+static int maxx = 160, maxy = 150;
 
 /* Here we create a structure so that every client has it's own pointer */
 
@@ -166,13 +166,19 @@ int main (int argc, char** argv)
             }
         }
 
-        const char * filename = "c:\\pixelbuffer.bin";
+
+        //const char * filename = "c:\\pixelbuffer.bin";
         unsigned char pixelbuffer[ maxx * maxy * bpp ];
+        initBuffer(pixelbuffer);
         int byteswritten = 0;
-        FILE * ft = fopen(filename, "rb");
-        if (ft)
+        //FILE * ft = fopen(filename, "rb");
+      int ret = MagickExportImagePixels(mw,0,0,160,150,"RGBA",CharPixel,pixelbuffer);
+
+      printf("ret = %d", ret);
+
+        //if (ft)
         {
-            fread(pixelbuffer, 1, maxx * maxy * bpp, ft);
+          //  fread(pixelbuffer, 1, maxx * maxy * bpp, ft);
 
             if (!runonce)
             {
@@ -213,12 +219,7 @@ int main (int argc, char** argv)
 
                 rfbMarkRectAsModified(rfbScreen, modx0, mody0, modx1, mody1);
             }
-            fclose(ft);
-        }
-        else
-        {
-            printf("couldn't open file");
-            return -1;
+            //fclose(ft);
         }
     }
 
