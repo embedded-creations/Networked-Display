@@ -182,6 +182,7 @@ int main (int argc, char** argv)
             {
                 runonce = 1;
                 memcpy(rfbScreen->frameBuffer, pixelbuffer, maxx * maxy * bpp);
+                rfbMarkRectAsModified(rfbScreen, 0, 0, maxx, maxy);
             }
 
             int modx0 = -1, modx1 = -1, mody0 = -1, mody1 = -1;
