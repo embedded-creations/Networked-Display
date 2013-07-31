@@ -39,7 +39,7 @@
 
 #include <stdio.h>
 
-static const int bpp = 1;
+static const int bpp = 4;
 static int maxx = 160, maxy = 150;
 
 /* Here we create a structure so that every client has it's own pointer */
@@ -141,9 +141,17 @@ int main (int argc, char** argv)
     /* Read the input image */
     MagickReadImage(mw,"input.bmp");
 
+    unsigned char pixelbuffer[ maxx * maxy * bpp ];
+    initBuffer(pixelbuffer);
+    int byteswritten = 0;
+    //FILE * ft = fopen(filename, "rb");
+    MagickExportImagePixels(mw,0,0,160,150,"RGBA",CharPixel,pixelbuffer);
+
 
     /* initialize the server */
     rfbInitServer(rfbScreen);
+
+    memcpy(rfbScreen->frameBuffer, pixelbuffer, maxx * maxy * bpp);
 
     /* this is the non-blocking event loop; a background thread is started */
     rfbRunEventLoop(rfbScreen, -1, TRUE);
@@ -168,22 +176,10 @@ int main (int argc, char** argv)
 
 
         //const char * filename = "c:\\pixelbuffer.bin";
-        unsigned char pixelbuffer[ maxx * maxy * bpp ];
-        initBuffer(pixelbuffer);
-        int byteswritten = 0;
-        //FILE * ft = fopen(filename, "rb");
-        MagickExportImagePixels(mw,0,0,160,150,"R",CharPixel,pixelbuffer);
 
         //if (ft)
         {
           //  fread(pixelbuffer, 1, maxx * maxy * bpp, ft);
-
-            if (!runonce)
-            {
-                runonce = 1;
-                memcpy(rfbScreen->frameBuffer, pixelbuffer, maxx * maxy * bpp);
-                rfbMarkRectAsModified(rfbScreen, 0, 0, maxx, maxy);
-            }
 
             int modx0 = -1, modx1 = -1, mody0 = -1, mody1 = -1;
             int j, i;
