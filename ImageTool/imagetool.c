@@ -39,7 +39,7 @@
 #include <stdio.h>
 
 static const int bpp = 4;
-static int maxx = 160, maxy = 150;
+static int maxx = 160, maxy = 144;
 
 /* Here we create a structure so that every client has it's own pointer */
 
@@ -74,27 +74,78 @@ int main (int argc, char** argv)
     rfbScreen->alwaysShared = TRUE;
     rfbScreen->newClientHook = newclient;
 
+    // open input file,
     MagickWandGenesis();
-
-    /* Create a wand */
     mw = NewMagickWand();
-
-    /* Read the input image */
     MagickReadImage(mw,"input.bmp");
-
-    //FILE * ft = fopen(filename, "rb");
-    MagickExportImagePixels(mw,0,0,160,150,"RGBA",CharPixel,rfbScreen->frameBuffer);
+    MagickExportImagePixels(mw,0,0,maxx,maxy,"RGBA",CharPixel,rfbScreen->frameBuffer);
 
     /* initialize the server */
     rfbInitServer(rfbScreen);
 
+#if 1
+    rfbClientPtr cl;
+
+    cl = (rfbClientPtr)calloc(sizeof(rfbClientRec),1);
+
+    cl->screen = rfbScreen;
+
+    /* setup pseudo scaling */
+    cl->scaledScreen = rfbScreen;
+    cl->scaledScreen->scaledScreenRefCount++;
+
+    // magic number to tell server to treat this special - don't send data just clear socket
+    cl->sock = -99;
+
+#if 1
+    // setup client with 16bpp true color
+    cl->format.bitsPerPixel = 16;
+    cl->format.depth = 16;
+    cl->format.redMax = 15;
+    cl->format.greenMax = 15;
+    cl->format.blueMax = 15;
+    cl->format.redShift = 4;
+    cl->format.greenShift = 0;
+    cl->format.blueShift = 12;
+#else
+    // setup client with 8bpp true color
+    cl->format.bitsPerPixel = 8;
+    cl->format.depth = 8;
+    cl->format.redMax = 3;
+    cl->format.greenMax = 3;
+    cl->format.blueMax = 3;
+    cl->format.redShift = 6;
+    cl->format.greenShift = 4;
+    cl->format.blueShift = 2;
+#endif
+
+    cl->format.trueColour = TRUE;
+    cl->format.bigEndian = FALSE;
+    cl->readyForSetColourMapEntries = TRUE;
+    cl->screen->setTranslateFunction(cl);
+
+    rfbResetStats(cl);
+
+    rfbSendRectEncodingHextile(cl, 0, 0, maxx, maxy);
+
+    rfbPrintStats(cl);
+
+    // print number of bytes stored to buffer (should be equal to value in Stats)
+    fprintf(stderr, "ublen = %d\n", cl->ublen);
+
+#endif
+
+
     /* this is the non-blocking event loop; a background thread is started */
+    // if we want to, let a client connect for comparison to offline encoding
+#if 1
     rfbRunEventLoop(rfbScreen, -1, TRUE);
     fprintf(stderr, "Running background loop...\n");
     while (1)
     {
         sleep(5);
     }
+#endif
 
     free(rfbScreen->frameBuffer);
     rfbScreenCleanup(rfbScreen);
