@@ -33,7 +33,6 @@
 #endif
 
 #include <rfb/rfb.h>
-#include <rfb/keysym.h>
 
 #include <wand/magick_wand.h>
 
@@ -62,67 +61,10 @@ static enum rfbNewClientAction newclient (rfbClientPtr cl)
     return RFB_CLIENT_ACCEPT;
 }
 
-/* switch to new framebuffer contents */
-
-static void newframebuffer (rfbScreenInfoPtr screen, int width, int height)
-{
-    unsigned char *oldfb, *newfb;
-
-    maxx = width;
-    maxy = height;
-    oldfb = (unsigned char*)screen->frameBuffer;
-    newfb = (unsigned char*)malloc(maxx * maxy * bpp);
-    rfbNewFramebuffer(screen, (char*)newfb, maxx, maxy, 8, 3, bpp);
-    free(oldfb);
-}
-
-static void initBuffer(unsigned char* buffer)
-{
-  int i,j;
-  for(j=0;j<maxy;++j) {
-    for(i=0;i<maxx;++i) {
-      buffer[(j*maxx+i)*bpp+0]=(i+j)*128/(maxx+maxy); /* red */
-      buffer[(j*maxx+i)*bpp+1]=i*128/maxx; /* green */
-      buffer[(j*maxx+i)*bpp+2]=j*256/maxy; /* blue */
-    }
-    buffer[j*maxx*bpp+0]=0xff;
-    buffer[j*maxx*bpp+1]=0xff;
-    buffer[j*maxx*bpp+2]=0xff;
-    buffer[j*maxx*bpp+3]=0xff;
-  }
-}
-
-uint8_t savedkeypress = 0;
-
-static void dokey(rfbBool down, rfbKeySym key, rfbClientPtr cl)
-{
-    if(down) {
-    if(key==XK_Escape)
-      rfbCloseClient(cl);
-    else if(key==XK_a || key==XK_b || key==XK_c || key==XK_r) {
-      uint8_t keyPress = key;
-      const char * filename = "c:\\vncinput.bin";
-      FILE * ft = fopen(filename, "wb");
-      if(ft)
-      {
-          fwrite(&keyPress, 1, 1, ft);
-          fclose(ft);
-      }
-      else
-          // the file is locked, record the press and write it to the file later
-          savedkeypress = keyPress;
-    }
-  }
-}
-
-/* Initialization */
-
-int runonce = 0;
 
 int main (int argc, char** argv)
 {
     MagickWand *mw = NULL;
-
 
     rfbScreenInfoPtr rfbScreen = rfbGetScreen(&argc, argv, maxx, maxy, 8, 3, bpp);
     if (!rfbScreen)
@@ -131,7 +73,6 @@ int main (int argc, char** argv)
     rfbScreen->frameBuffer = (char*)malloc(maxx * maxy * bpp);
     rfbScreen->alwaysShared = TRUE;
     rfbScreen->newClientHook = newclient;
-    rfbScreen->kbdAddEvent = dokey;
 
     MagickWandGenesis();
 
@@ -141,17 +82,11 @@ int main (int argc, char** argv)
     /* Read the input image */
     MagickReadImage(mw,"input.bmp");
 
-    unsigned char pixelbuffer[ maxx * maxy * bpp ];
-    initBuffer(pixelbuffer);
-    int byteswritten = 0;
     //FILE * ft = fopen(filename, "rb");
-    MagickExportImagePixels(mw,0,0,160,150,"RGBA",CharPixel,pixelbuffer);
-
+    MagickExportImagePixels(mw,0,0,160,150,"RGBA",CharPixel,rfbScreen->frameBuffer);
 
     /* initialize the server */
     rfbInitServer(rfbScreen);
-
-    memcpy(rfbScreen->frameBuffer, pixelbuffer, maxx * maxy * bpp);
 
     /* this is the non-blocking event loop; a background thread is started */
     rfbRunEventLoop(rfbScreen, -1, TRUE);
@@ -159,63 +94,6 @@ int main (int argc, char** argv)
     while (1)
     {
         sleep(5);
-
-        // try again to open the file and write a keypress we captured in dokey() but was locked before
-        if(savedkeypress)
-        {
-            const char * filename = "c:\\vncinput.bin";
-
-            FILE * ft = fopen(filename, "wb");
-            if(ft)
-            {
-                fwrite(&savedkeypress, 1, 1, ft);
-                fclose(ft);
-                savedkeypress = 0;
-            }
-        }
-
-
-        //const char * filename = "c:\\pixelbuffer.bin";
-
-        //if (ft)
-        {
-          //  fread(pixelbuffer, 1, maxx * maxy * bpp, ft);
-
-            int modx0 = -1, modx1 = -1, mody0 = -1, mody1 = -1;
-            int j, i;
-
-            // find the smallest (single) rectangle that covers all the modified pixels
-#if 1
-            for (j = 0; j < maxy; j++)
-            {
-                for (i = 0; i < maxx; i++)
-                {
-                    if (pixelbuffer[ j * maxx * bpp + i * bpp + 0 ] != (unsigned char)rfbScreen->frameBuffer[ j * maxx * bpp + i * bpp + 0 ]
-                     || pixelbuffer[ j * maxx * bpp + i * bpp + 1 ] != (unsigned char)rfbScreen->frameBuffer[ j * maxx * bpp + i * bpp + 1 ]
-                     || pixelbuffer[ j * maxx * bpp + i * bpp + 2 ] != (unsigned char)rfbScreen->frameBuffer[ j * maxx * bpp + i * bpp + 2 ])
-                    {
-                        if (modx0 < 0 || i < modx0)
-                            modx0 = i;
-                        if (i > modx1)
-                            modx1 = i + 2;
-                        if (mody0 < 0 || j < mody0)
-                            mody0 = j;
-                        if (j > mody1)
-                            mody1 = j + 2;
-
-                    }
-                }
-            }
-#endif
-            // if there were any modified pixels, mark the rectangle
-            if (modx0 >= 0)
-            {
-                memcpy(rfbScreen->frameBuffer, pixelbuffer, maxx * maxy * bpp);
-
-                rfbMarkRectAsModified(rfbScreen, modx0, mody0, modx1, mody1);
-            }
-            //fclose(ft);
-        }
     }
 
     free(rfbScreen->frameBuffer);
