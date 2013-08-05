@@ -29,11 +29,43 @@ static void PrintRect(rfbClient* client, int x, int y, int w, int h) {
     rfbClientLog("Received an update for %d,%d,%d,%d.\n",x,y,w,h);
 }
 
-
 static void SaveFramebufferAsImage(rfbClient* client, int x, int y, int w, int h) {
     MagickWand *wand;
     MagickBooleanType status;
     PixelWand * background = NewPixelWand();
+
+    uint8_t fullFrameBuffer[4 * client->width * client->height];
+
+    long i;
+    for(i=0; i < client->width * client->height; i++) {
+        if(client->format.bitsPerPixel == 32) {
+            fullFrameBuffer[i * 4] = client->frameBuffer[i * 4];
+            fullFrameBuffer[i * 4 + 1] = client->frameBuffer[i * 4 + 1];
+            fullFrameBuffer[i * 4 + 2] = client->frameBuffer[i * 4 + 2];
+            fullFrameBuffer[i * 4 + 3] = 0;
+        }
+
+        if(client->format.bitsPerPixel == 8) {
+            if(client->format.depth == 1) {
+                uint8_t pixelValue;
+                if(client->frameBuffer[i])
+                    pixelValue = 255;
+                else
+                    pixelValue = 0;
+
+                fullFrameBuffer[i * 4] = pixelValue;
+                fullFrameBuffer[i * 4 + 1] = pixelValue;
+                fullFrameBuffer[i * 4 + 2] = pixelValue;
+                fullFrameBuffer[i * 4 + 3] = 0;
+
+            } else {
+                fullFrameBuffer[i * 4] = client->frameBuffer[i];
+                fullFrameBuffer[i * 4 + 1] = client->frameBuffer[i];
+                fullFrameBuffer[i * 4 + 2] = client->frameBuffer[i];
+                fullFrameBuffer[i * 4 + 3] = 0;
+            }
+        }
+    }
 
     MagickWandGenesis();
     wand=NewMagickWand();
@@ -42,7 +74,7 @@ static void SaveFramebufferAsImage(rfbClient* client, int x, int y, int w, int h
     if (status == MagickFalse)
         ThrowWandException(wand);
 
-    status = MagickImportImagePixels(wand,0,0,client->width,client->height,"RGBO",CharPixel,client->frameBuffer);
+    status = MagickImportImagePixels(wand,0,0,client->width,client->height,"RGBO",CharPixel,fullFrameBuffer);
     if (status == MagickFalse)
         ThrowWandException(wand);
 
@@ -76,6 +108,31 @@ main(int argc, char **argv)
        option, when a successful incoming connection has been accepted,
        listenForIncomingConnections() returns, setting the listenSpecified
        flag. */
+
+#if 0
+    // setup client with 8bpp true color
+    client->format.bitsPerPixel = 8;
+    client->format.depth = 8;
+    client->format.redMax = 3;
+    client->format.greenMax = 3;
+    client->format.blueMax = 3;
+    client->format.redShift = 6;
+    client->format.greenShift = 4;
+    client->format.blueShift = 2;
+#endif
+
+#if 1
+    // setup client with 8bpp 1bit depth
+    client->format.bitsPerPixel = 8;
+    client->format.depth = 1;
+    client->format.redMax = 1;
+    client->format.greenMax = 1;
+    client->format.blueMax = 1;
+    client->format.redShift = 0;
+    client->format.greenShift = 0;
+    client->format.blueShift = 0;
+#endif
+
 
     if (!rfbInitClient(client,&argc,argv))
         return 1;
