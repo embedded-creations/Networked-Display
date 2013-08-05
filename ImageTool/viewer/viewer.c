@@ -8,54 +8,51 @@
 #include <time.h>
 #include <errno.h>
 #include <rfb/rfbclient.h>
+#include <wand/magick_wand.h>
+
+    #define ThrowWandException(wand) \
+    { \
+      char \
+        *description; \
+     \
+      ExceptionType \
+        severity; \
+     \
+      description=MagickGetException(wand,&severity); \
+      (void) fprintf(stderr,"%s %s %ld %s\n",GetMagickModule(),description); \
+      description=(char *) MagickRelinquishMemory(description); \
+      exit(-1); \
+    }
+
 
 static void PrintRect(rfbClient* client, int x, int y, int w, int h) {
     rfbClientLog("Received an update for %d,%d,%d,%d.\n",x,y,w,h);
 }
 
-static void SaveFramebufferAsPPM(rfbClient* client, int x, int y, int w, int h) {
-    static time_t t=0,t1;
-    FILE* f;
-    int i,j;
-    rfbPixelFormat* pf=&client->format;
-    int bpp=pf->bitsPerPixel/8;
-    int row_stride=client->width*bpp;
 
-    /* save one picture only if the last is older than 2 seconds */
-    t1=time(NULL);
-    if(t1-t>2)
-        t=t1;
-    else
-        return;
+static void SaveFramebufferAsImage(rfbClient* client, int x, int y, int w, int h) {
+    MagickWand *wand;
+    MagickBooleanType status;
+    PixelWand * background = NewPixelWand();
 
-    /* assert bpp=4 */
-    if(bpp!=4 && bpp!=2) {
-        rfbClientLog("bpp = %d (!=4)\n",bpp);
-        return;
-    }
+    MagickWandGenesis();
+    wand=NewMagickWand();
 
-    f=fopen("framebuffer.ppm","wb");
-    if(!f) {
-        rfbClientErr("Could not open framebuffer.ppm\n");
-        return;
-    }
+    status = MagickNewImage(wand, client->width, client->height, background);
+    if (status == MagickFalse)
+        ThrowWandException(wand);
 
-    fprintf(f,"P6\n# %s\n%d %d\n255\n",client->desktopName,client->width,client->height);
-    for(j=0;j<client->height*row_stride;j+=row_stride)
-        for(i=0;i<client->width*bpp;i+=bpp) {
-            unsigned char* p=client->frameBuffer+j+i;
-            unsigned int v;
-            if(bpp==4)
-                v=*(unsigned int*)p;
-            else if(bpp==2)
-                v=*(unsigned short*)p;
-            else
-                v=*(unsigned char*)p;
-            fputc((v>>pf->redShift)*256/(pf->redMax+1),f);
-            fputc((v>>pf->greenShift)*256/(pf->greenMax+1),f);
-            fputc((v>>pf->blueShift)*256/(pf->blueMax+1),f);
-        }
-    fclose(f);
+    status = MagickImportImagePixels(wand,0,0,client->width,client->height,"RGBO",CharPixel,client->frameBuffer);
+    if (status == MagickFalse)
+        ThrowWandException(wand);
+
+    status = MagickWriteImage(wand, "output.png");
+
+    if (status == MagickFalse)
+        ThrowWandException(wand);
+
+    if(wand) wand = DestroyMagickWand(wand);
+    MagickWandTerminus();
 }
 
 int
@@ -68,7 +65,7 @@ main(int argc, char **argv)
         client->GotFrameBufferUpdate = PrintRect;
         argv[1]=argv[0]; argv++; argc--;
     } else
-        client->GotFrameBufferUpdate = SaveFramebufferAsPPM;
+        client->GotFrameBufferUpdate = SaveFramebufferAsImage;
 
     /* The -listen option is used to make us a daemon process which listens for
        incoming connections from servers, rather than actively connecting to a
