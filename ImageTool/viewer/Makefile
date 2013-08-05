@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-I/usr/local/include/ImageMagick/ -lvncclient -lpthread `pkg-config --cflags --libs MagickWand`
+CFLAGS=-I/usr/local/include/ImageMagick/
+LDFLAGS=-lvncclient -lpthread `pkg-config --cflags --libs MagickWand`
 DEPS =
 OBJ = viewer.o
 PROJECTNAME = viewer
@@ -8,7 +9,7 @@ PROJECTNAME = viewer
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 all: $(OBJ)
-	gcc -o $(PROJECTNAME) $^ $(CFLAGS)
+	gcc -o $(PROJECTNAME) $^ $(LDFLAGS)
 
 clean:
 	rm -f *.o *~ core

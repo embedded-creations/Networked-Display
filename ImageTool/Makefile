@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-I/usr/local/include/ImageMagick/ -lvncserver -lpthread `pkg-config --cflags --libs MagickWand`
+CFLAGS=-I/usr/local/include/ImageMagick/
+LDFLAGS=-lvncserver -lpthread `pkg-config --cflags --libs MagickWand`
 DEPS =
 OBJ = imagetool.o
 PROJECTNAME = imagetool
@@ -8,7 +9,7 @@ PROJECTNAME = imagetool
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 all: $(OBJ)
-	gcc -o $(PROJECTNAME) $^ $(CFLAGS)
+	gcc -o $(PROJECTNAME) $^ $(LDFLAGS)
 
 clean:
 	rm -f *.o *~ core
