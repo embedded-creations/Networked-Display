@@ -39,7 +39,7 @@
 #include <stdio.h>
 
 static const int bpp = 4;
-static int maxx = 160, maxy = 144;
+static int maxx = 160, maxy = 160;
 
 /* Here we create a structure so that every client has it's own pointer */
 
@@ -97,7 +97,7 @@ int main (int argc, char** argv)
     // magic number to tell server to treat this special - don't send data just clear socket
     cl->sock = -99;
 
-#if 1
+#if 0
     // setup client with 16bpp true color
     cl->format.bitsPerPixel = 16;
     cl->format.depth = 16;
@@ -107,7 +107,8 @@ int main (int argc, char** argv)
     cl->format.redShift = 4;
     cl->format.greenShift = 0;
     cl->format.blueShift = 12;
-#else
+#endif
+#if 0
     // setup client with 8bpp true color
     cl->format.bitsPerPixel = 8;
     cl->format.depth = 8;
@@ -117,6 +118,18 @@ int main (int argc, char** argv)
     cl->format.redShift = 6;
     cl->format.greenShift = 4;
     cl->format.blueShift = 2;
+#endif
+
+#if 1
+    // setup client with 1bpp
+    cl->format.bitsPerPixel = 8;
+    cl->format.depth = 1;
+    cl->format.redMax = 1;
+    cl->format.greenMax = 1;
+    cl->format.blueMax = 1;
+    cl->format.redShift = 0;
+    cl->format.greenShift = 0;
+    cl->format.blueShift = 0;
 #endif
 
     cl->format.trueColour = TRUE;
