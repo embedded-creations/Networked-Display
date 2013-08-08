@@ -39,13 +39,19 @@
 #include <stdio.h>
 
 static const int bpp = 4;
-static int maxx = 160, maxy = 160;
+static int maxx, maxy;
 
 
 
 int main (int argc, char** argv)
 {
+    // open input file,
     MagickWand *mw = NULL;
+    MagickWandGenesis();
+    mw = NewMagickWand();
+    MagickReadImage(mw,"input.bmp");
+    maxx = MagickGetImageWidth(mw);
+    maxy = MagickGetImageHeight(mw);
 
     rfbScreenInfoPtr rfbScreen = rfbGetScreen(&argc, argv, maxx, maxy, 8, 3, bpp);
     if (!rfbScreen)
@@ -54,10 +60,6 @@ int main (int argc, char** argv)
     rfbScreen->frameBuffer = (char*)malloc(maxx * maxy * bpp);
     rfbScreen->alwaysShared = TRUE;
 
-    // open input file,
-    MagickWandGenesis();
-    mw = NewMagickWand();
-    MagickReadImage(mw,"input.bmp");
     MagickExportImagePixels(mw,0,0,maxx,maxy,"RGBA",CharPixel,rfbScreen->frameBuffer);
 
     /* initialize the server */
