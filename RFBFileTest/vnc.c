@@ -221,46 +221,46 @@ int processHextile(void)
   // tile x,y w,h
   static unsigned int tileX, tileY;
   static unsigned char tileW, tileH;
-  
+
   static unsigned int background, foreground;
-  
+
   static unsigned char subencodingByte;
-  
+
   static unsigned char numSubrects;
-  
+
   unsigned char temp1, temp2, temp3;
 
   unsigned int rectangleColor;
-  
+
   unsigned char i,j;
-  
+
   unsigned char x0, y0, x1, y1;
-  
+
   // temporary 16x16 pixel buffer
   static unsigned char hextileBuffer[16][16 * BYTES_PER_PIXEL];
-  
+
   switch( hextileState )
   {
     case HEXTILESTATE_INIT:
-    
+
       // set the current x,y
       tileX = updateWindowX0 ;
       tileY = updateWindowY0 ;
-      
+
       // set the tile x,y width, height
       tileW = updateWindowX1 < updateWindowX0+16 ?
                 updateWindowX1-updateWindowX0 : 16;
       tileH = updateWindowY1 < updateWindowY0+16 ?
                 updateWindowY1-updateWindowY0 : 16;
-      
+
       // go to parseheader
       hextileState = HEXTILESTATE_PARSEHEADER ;
       return 1;
-    
+
     case HEXTILESTATE_DONE:
       // increment the tile x,y
       tileX += tileW;
-           
+
       // if next is the end column, set the width<16
       if( tileX == updateWindowX1 )
       {
@@ -271,37 +271,37 @@ int processHextile(void)
           hextileState = HEXTILESTATE_INIT;
           return 0;
         }
-        
+
         tileX = updateWindowX0;
         tileY += tileH;
         tileH = updateWindowY1 < tileY+16 ? updateWindowY1-tileY : 16;
       }
-      
+
       // if the next tile is the last column, set the width to < 16
       tileW = updateWindowX1 < tileX+16 ? updateWindowX1-tileX : 16;
-      
+
       hextileState = HEXTILESTATE_PARSEHEADER;
       return 1;
-    
+
     case HEXTILESTATE_PARSEHEADER:
       // wait for subencoding byte
       if( dataSize < 1 )
         return 0;
-        
+
       subencodingByte = *dataPtr++;
       dataSize--;
-      
+
       temp3 = 0;
-      
+
       if( subencodingByte & HEXTILE_BACKGROUND_MASK )
         temp3 += BYTES_PER_PIXEL;
-        
+
       if( subencodingByte & HEXTILE_FOREGROUND_MASK )
           temp3 += BYTES_PER_PIXEL;
-        
+
       if( subencodingByte & HEXTILE_SUBRECT_MASK )
           temp3 += BYTES_PER_PIXEL;
-        
+
       // if the optional bytes are not in the buffer, exit
       if( dataSize < temp3 )
       {
@@ -309,7 +309,7 @@ int processHextile(void)
         dataSize++;
         return 0;
       }
-      
+
       // if raw bit, set state to raw and goto drawraw
       if( subencodingByte & HEXTILE_RAW_MASK )
       {
@@ -320,7 +320,7 @@ int processHextile(void)
           hextileState = HEXTILESTATE_DROPRAW;
           return 1;
         }
-        
+
         interPixelCount = tileW * tileH;
 
         SetupTile(tileX, tileY, tileW, tileH);
@@ -328,7 +328,7 @@ int processHextile(void)
         hextileState = HEXTILESTATE_DRAWRAW;
         return 1;
       }
-      
+
       // else - if background specified read in pixel value
       if( subencodingByte & HEXTILE_BACKGROUND_MASK )
       {
@@ -337,7 +337,7 @@ int processHextile(void)
             background |= (*dataPtr++)*256;
         dataSize -= BYTES_PER_PIXEL;
       }
-    
+
       if( subencodingByte & HEXTILE_FOREGROUND_MASK )
       {
         foreground = *dataPtr++;
@@ -365,21 +365,21 @@ int processHextile(void)
                     hextileBuffer[ j ][ i+1 ] = background/256;
             }
         }
-      
+
       hextileState = HEXTILESTATE_FILLBUFFER ;
-      
+
       return 1;
-    
+
     case HEXTILESTATE_DROPRAW:
       if(!dropOutOfViewPixels())
           return 0;
-      
+
       if( interPixelCount == 0)
       {
         hextileState = HEXTILESTATE_DONE;
         return 1;
       }
-        
+
       break;
 
 
@@ -410,44 +410,44 @@ int processHextile(void)
       while( numSubrects != 0 )
       {
         rectangleColor = foreground;
-      
+
         // is subrect in buffer (return if not)
         if( subencodingByte & HEXTILE_SUBRECTCOLOR_MASK )
         {
           if( dataSize < 2 + BYTES_PER_PIXEL )
             return 0;
-          
+
           // subrect color;
           rectangleColor = dataPtr[0];
           if(BYTES_PER_PIXEL == 2)
               rectangleColor |= dataPtr[1] * 256;
-          
+
           dataSize-=BYTES_PER_PIXEL;
           dataPtr+=BYTES_PER_PIXEL;
         }
         else if( dataSize < 2 )
           return 0;
 
-        
+
         // read in a subrectangle (with pixelvalue?)
 
         // x,y offset
         temp1 = dataPtr[0];
-      
+
         // width/height
         temp2 = dataPtr[1];
-      
+
         dataSize -= 2;
         dataPtr += 2;
-      
-      
+
+
         // rectangle starts at x0,y0 and stops at x1,y1 including the stop row/col
         x0 = (temp1 & 0xF0) >> 4;
         x1 = x0 + ((temp2 & 0xF0) >> 4);
-      
+
         y0 = (temp1 & 0x0F);
         y1 = y0 + (temp2 & 0x0F);
-      
+
 
         for (j = y0; j <= y1; j++)
         {
@@ -461,11 +461,11 @@ int processHextile(void)
 
         numSubrects--;
      }
-   
+
      // state = drawtile - continue
      hextileState = HEXTILESTATE_DRAWTILE ;
      return 1;
-    
+
   case HEXTILESTATE_DRAWTILE:
         // only draw the buffer if it fits cleanly into the currentWindow
         if( tileX < windowX0 || (tileX + tileW) > windowX1 || tileY < windowY0
@@ -477,7 +477,7 @@ int processHextile(void)
         }
 
         SetupTile(tileX, tileY, tileW, tileH);
-        DrawHextile(tileW, tileH, BYTES_PER_PIXEL, hextileBuffer);
+        //DrawHextile(tileW, tileH, BYTES_PER_PIXEL, hextileBuffer);
 
         hextileState = HEXTILESTATE_DONE ;
         return 1;

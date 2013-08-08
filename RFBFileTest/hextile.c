@@ -71,12 +71,15 @@ void SetupHandleHextile(int rectx, int recty, int rectw, int recth) {
     y = ry;
 }
 
+#define GET_PIXEL16(pix, ptr) (((uint8_t*)&(pix))[0] = *(ptr), \
+                   ((uint8_t*)&(pix))[1] = *(ptr+1))
+
 unsigned int
 HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
 {
     int i;
-    //uint8_t *ptr;
-    //int sx, sy, sw, sh;
+    uint8_t *ptr;
+    int sx, sy, sw, sh;
     uint8_t subencoding;
     uint8_t nSubrects;
     unsigned int readLength;
@@ -94,7 +97,7 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
             if(buffersize-progress < 1)
                 return progress;
 
-#if 1
+#if 0
             DEBUG_PRINTSTRING("Progress=");
             DEBUG_PRINTHEX(progress/256);
             DEBUG_PRINTHEX(progress);
@@ -102,7 +105,7 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
 
             subencoding = rfbBuffer[progress];
 
-#if 1
+#if 0
             DEBUG_PRINTSTRING("Subenc=");
             DEBUG_PRINTHEX(subencoding);
 #endif
@@ -114,29 +117,54 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
             if(subencoding & rfbHextileRaw) {
                 readLength += w * h * (BPP / 8);
             } else {
-                if(subencoding & rfbHextileBackgroundSpecified)
-                    readLength += sizeof(bg);
+                if(subencoding & rfbHextileBackgroundSpecified) {
+                    if(buffersize-progress < readLength + sizeof(bg))
+                        return progress;
 
-                if(subencoding & rfbHextileForegroundSpecified)
+                    GET_PIXEL16(bg, rfbBuffer + progress + readLength);
+                    readLength += sizeof(bg);
+                }
+
+                if(subencoding & rfbHextileForegroundSpecified) {
+                    if(buffersize-progress < readLength + sizeof(fg))
+                        return progress;
+
+                    GET_PIXEL16(fg, rfbBuffer + progress + readLength);
                     readLength += sizeof(fg);
+                }
 
                 if (subencoding & rfbHextileAnySubrects) {
                     if(buffersize-progress < readLength)
                         return progress;
 
+                    nSubrects = rfbBuffer[progress + readLength];
+
                     readLength += 1;
 
-                    nSubrects = rfbBuffer[progress + readLength];
+#if 0
+                    DEBUG_PRINTSTRING("nSubrects=");
+                    DEBUG_PRINTHEX(nSubrects);
+#endif
+
+                    ptr = rfbBuffer + progress + readLength;
 
                     if (subencoding & rfbHextileSubrectsColoured)
                         readLength += nSubrects * (2 + (BPP / 8));
                     else
                         readLength += nSubrects * 2;
                 }
+                else
+                    nSubrects = 0;
             }
 
             if(buffersize-progress < readLength)
                 return progress;
+
+#if 0
+            DEBUG_PRINTSTRING("readLen=");
+            DEBUG_PRINTHEX(readLength/256);
+            DEBUG_PRINTHEX(readLength);
+#endif
 
             if (subencoding & rfbHextileRaw) {
                 SetupTile(x,y,w,h);
@@ -146,76 +174,36 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                 continue;
             }
 
+            SetupTile(x,y,w,h);
+            FillSubRectangle(0,0,w,h,bg);
+
+            int i;
+
+            for (i = 0; i < nSubrects; i++) {
+
+                if (subencoding & rfbHextileSubrectsColoured) {
+                    GET_PIXEL16(fg, ptr);
+                    ptr += sizeof(fg);
+                }
+                //fg = 0x5555;
+                sx = rfbHextileExtractX(*ptr);
+                sy = rfbHextileExtractY(*ptr);
+                ptr++;
+                sw = rfbHextileExtractW(*ptr);
+                sh = rfbHextileExtractH(*ptr);
+                ptr++;
+
+              FillSubRectangle(sx, sy, sw, sh, fg);
+            }
+
+            DrawHextile(w,h);
+
             progress += readLength;
             continue;
         }
     }
 
     return progress;
-#if 0
-            if (subencoding & rfbHextileBackgroundSpecified)
-    if (!ReadFromRFBServer(client, (char *)&bg, sizeof(bg)))
-      return FALSE;
-
-      FillRectangle(client, x, y, w, h, bg);
-
-      if (subencoding & rfbHextileForegroundSpecified)
-    if (!ReadFromRFBServer(client, (char *)&fg, sizeof(fg)))
-      return FALSE;
-
-      if (!(subencoding & rfbHextileAnySubrects)) {
-    continue;
-      }
-
-      if (!ReadFromRFBServer(client, (char *)&nSubrects, 1))
-    return FALSE;
-
-      ptr = (uint8_t*)client->buffer;
-
-      if (subencoding & rfbHextileSubrectsColoured) {
-    if (!ReadFromRFBServer(client, client->buffer, nSubrects * (2 + (BPP / 8))))
-      return FALSE;
-
-    for (i = 0; i < nSubrects; i++) {
-#if BPP==8
-      GET_PIXEL8(fg, ptr);
-#elif BPP==16
-      GET_PIXEL16(fg, ptr);
-#elif BPP==32
-      GET_PIXEL32(fg, ptr);
-#else
-#error "Invalid BPP"
-#endif
-      sx = rfbHextileExtractX(*ptr);
-      sy = rfbHextileExtractY(*ptr);
-      ptr++;
-      sw = rfbHextileExtractW(*ptr);
-      sh = rfbHextileExtractH(*ptr);
-      ptr++;
-
-      FillRectangle(client, x+sx, y+sy, sw, sh, fg);
-    }
-
-      } else {
-    if (!ReadFromRFBServer(client, client->buffer, nSubrects * 2))
-      return FALSE;
-
-    for (i = 0; i < nSubrects; i++) {
-      sx = rfbHextileExtractX(*ptr);
-      sy = rfbHextileExtractY(*ptr);
-      ptr++;
-      sw = rfbHextileExtractW(*ptr);
-      sh = rfbHextileExtractH(*ptr);
-      ptr++;
-
-      FillRectangle(client, x+sx, y+sy, sw, sh, fg);
-    }
-      }
-    }
-  }
-
-  return TRUE;
-#endif
 }
 
 #undef CARDBPP
