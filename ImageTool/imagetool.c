@@ -41,25 +41,6 @@
 static const int bpp = 4;
 static int maxx = 160, maxy = 160;
 
-/* Here we create a structure so that every client has it's own pointer */
-
-typedef struct ClientData
-{
-    rfbBool oldButton;
-    int oldx, oldy;
-} ClientData;
-
-static void clientgone (rfbClientPtr cl)
-{
-    free(cl->clientData);
-}
-
-static enum rfbNewClientAction newclient (rfbClientPtr cl)
-{
-    cl->clientData = (void*)calloc(sizeof(ClientData), 1);
-    cl->clientGoneHook = clientgone;
-    return RFB_CLIENT_ACCEPT;
-}
 
 
 int main (int argc, char** argv)
@@ -72,7 +53,6 @@ int main (int argc, char** argv)
     rfbScreen->desktopName = "LibVNCServer Example";
     rfbScreen->frameBuffer = (char*)malloc(maxx * maxy * bpp);
     rfbScreen->alwaysShared = TRUE;
-    rfbScreen->newClientHook = newclient;
 
     // open input file,
     MagickWandGenesis();
