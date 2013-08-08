@@ -146,9 +146,15 @@ int main(void)
     }
 
 
+#if 0
     SetupTile(0,0,16,16);
     //DrawHextile(16,16, 2, hextileBuffer);
     DrawRawTile(16*16, 2, rawData + 1);
+#else
+    SetupHandleHextile(0,0,16,16);
+    HandleHextile16(rawData, 513);
+#endif
+
 
     for(;;) {
 

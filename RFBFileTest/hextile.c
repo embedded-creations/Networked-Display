@@ -50,69 +50,99 @@
  * encoded rectangle with BPP bits per pixel.
  */
 
+#include "hextile.h"
+
+
 #define HandleHextileBPP CONCAT2E(HandleHextile,BPP)
-#define CARDBPP CONCAT3E(uint,BPP,_t)
+//#define CARDBPP CONCAT3E(uint,BPP,_t)
+#define CARDBPP uint16_t
 
-static rfbBool
-HandleHextileBPP (rfbClient* client, int rx, int ry, int rw, int rh)
+static int x, y, w, h;
+static int rx, ry, rw, rh;
+static CARDBPP bg, fg;
+
+void SetupHandleHextile(int rectx, int recty, int rectw, int recth) {
+    rx = rectx;
+    ry = recty;
+    rw = rectw;
+    rh = recth;
+
+    x = rx;
+    y = ry;
+}
+
+unsigned int
+HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
 {
-  CARDBPP bg, fg;
-  int i;
-  uint8_t *ptr;
-  int x, y, w, h;
-  int sx, sy, sw, sh;
-  uint8_t subencoding;
-  uint8_t nSubrects;
+    int i;
+    //uint8_t *ptr;
+    //int sx, sy, sw, sh;
+    uint8_t subencoding;
+    uint8_t nSubrects;
+    unsigned char readLength;
 
-  for (y = ry; y < ry+rh; y += 16) {
-    for (x = rx; x < rx+rw; x += 16) {
-      w = h = 16;
-      if (rx+rw - x < 16)
-    w = rx+rw - x;
-      if (ry+rh - y < 16)
-    h = ry+rh - y;
+    unsigned int progress = 0;
 
-      if (!ReadFromRFBServer(client, (char *)&subencoding, 1))
-    return FALSE;
+    for (y = y; y < ry+rh; y += 16, x=0) {
+        for (x = x; x < rx+rw; x += 16) {
+            w = h = 16;
+            if (rx+rw - x < 16)
+                w = rx+rw - x;
+            if (ry+rh - y < 16)
+                h = ry+rh - y;
 
-      if (subencoding & rfbHextileRaw) {
-        /* Special case for depth == 1: unpack pixels from bytes before copying */
-        if(client->format.depth == 1) {
-            int bytesToRead = w*h/8;
-            uint8_t tempbuffer[16 * 16];
-            uint8_t * bufptr;
-            int i=0;
+            if(buffersize-progress < 1)
+                return progress;
 
-            if((w*h) % 8)
-                bytesToRead++;
+            subencoding = rfbBuffer[progress];
 
-            if (!ReadFromRFBServer(client, client->buffer, bytesToRead))
-              return FALSE;
+            // calculate length here:
+            // start with subencoding byte
+            readLength = 1;
 
-            while(i < w * h) {
-                /* set a bit for every non-zero pixel */
-                bufptr = (uint8_t *)client->buffer;
-                bufptr += i/8;
-                if(*bufptr & (1 << i%8))
-                    tempbuffer[i] = 255;
-                else
-                    tempbuffer[i] = 0;
+            if(subencoding & rfbHextileRaw) {
+                readLength += w * h * (BPP / 8);
+            } else {
+                if(subencoding & rfbHextileBackgroundSpecified)
+                    readLength += sizeof(bg);
 
-                i++;
+                if(subencoding & rfbHextileForegroundSpecified)
+                    readLength += sizeof(fg);
+
+                if (subencoding & rfbHextileAnySubrects) {
+                    if(buffersize-progress < readLength)
+                        return progress;
+
+                    readLength += 1;
+
+                    nSubrects = rfbBuffer[progress + readLength];
+
+                    if (subencoding & rfbHextileSubrectsColoured)
+                        readLength += nSubrects * (2 + (BPP / 8));
+                    else
+                        readLength += nSubrects * 2;
+                }
             }
 
-            CopyRectangle(client, tempbuffer, x, y, w, h);
-        } else {
-            if (!ReadFromRFBServer(client, client->buffer, w * h * (BPP / 8)))
-              return FALSE;
+            if(buffersize-progress < readLength)
+                return progress;
 
-            CopyRectangle(client, (uint8_t *)client->buffer, x, y, w, h);
+            if (subencoding & rfbHextileRaw) {
+                SetupTile(x,y,w,h);
+                DrawRawTile(w*h, BPP/8, rfbBuffer + progress + 1);
+
+                progress += readLength;
+                continue;
+            }
+
+            progress += readLength;
+            continue;
         }
+    }
 
-    continue;
-      }
-
-      if (subencoding & rfbHextileBackgroundSpecified)
+    return progress;
+#if 0
+            if (subencoding & rfbHextileBackgroundSpecified)
     if (!ReadFromRFBServer(client, (char *)&bg, sizeof(bg)))
       return FALSE;
 
@@ -174,6 +204,7 @@ HandleHextileBPP (rfbClient* client, int rx, int ry, int rw, int rh)
   }
 
   return TRUE;
+#endif
 }
 
 #undef CARDBPP

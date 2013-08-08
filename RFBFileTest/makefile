@@ -55,7 +55,8 @@ SRC =	main.c \
 	SpiLcd.c \
 	vnc.c \
 	VncDisplay.c \
-	VncServerComms.c
+	VncServerComms.c \
+	hextile.c
 
 
 # MCU name, you MUST set this to match the board you are using
