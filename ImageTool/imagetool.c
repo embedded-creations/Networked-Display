@@ -98,6 +98,18 @@ int main (int argc, char** argv)
     cl->format.greenShift = 0;
     cl->format.blueShift = 12;
 #endif
+#if 1
+    // setup client with 16bpp, color matching 1.8" LCD
+    cl->format.bitsPerPixel = 16;
+    cl->format.depth = 16;
+    cl->format.redMax = 0x1f;
+    cl->format.greenMax = 0x3f;
+    cl->format.blueMax = 0x1f;
+    cl->format.redShift = 11;
+    cl->format.greenShift = 5;
+    cl->format.blueShift = 0;
+#endif
+
 #if 0
     // setup client with 8bpp true color
     cl->format.bitsPerPixel = 8;
@@ -110,7 +122,7 @@ int main (int argc, char** argv)
     cl->format.blueShift = 2;
 #endif
 
-#if 1
+#if 0
     // setup client with 1bpp
     cl->format.bitsPerPixel = 8;
     cl->format.depth = 1;
