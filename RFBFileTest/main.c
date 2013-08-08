@@ -90,28 +90,18 @@ int main(void)
     int remaining;
 
     while(position < sizeof(rawData)) {
-      remaining = sizeof(rawData) - position;
-      if(remaining > MAX_TILE_SIZE)
-        remaining = MAX_TILE_SIZE;
+        remaining = sizeof(rawData) - position;
+        if(remaining > MAX_TILE_SIZE)
+            remaining = MAX_TILE_SIZE;
 
-      memcpy_P(tempbuffer, rawData + position, remaining);
+        memcpy_P(tempbuffer, rawData + position, remaining);
 
-      int ret = HandleHextile16(tempbuffer, remaining);
+        int ret = HandleHextile16(tempbuffer, remaining);
 
-      position += ret;
+        position += ret;
     }
-
 
     for(;;) {
 
     }
-
-
-
 }
-
-
-
-
-
-
