@@ -307,9 +307,10 @@ void DrawRawTile(unsigned int pixelCount, unsigned char bytes_per_pixel, uint8_t
 
 void DrawHextile(unsigned char tileW, unsigned char tileH, unsigned char bytes_per_pixel, uint8_t hextileBuffer[16][16*bytes_per_pixel])
 {
-    for (unsigned int j = 0; j < tileH; j++)
+#if 0
+    for (unsigned char j = 0; j < tileH; j++)
     {
-        for (unsigned int i = 0; i < tileW * bytes_per_pixel; i += bytes_per_pixel)
+        for (unsigned char i = 0; i < tileW * bytes_per_pixel; i += bytes_per_pixel)
         {
             if(bytes_per_pixel == 1)
                 Write8bitPixel(hextileBuffer[j][i]);
@@ -317,6 +318,31 @@ void DrawHextile(unsigned char tileW, unsigned char tileH, unsigned char bytes_p
                 WritePixel(hextileBuffer[j][i] + hextileBuffer[j][i+1]*256);
         }
     }
+#endif
+}
+
+
+#define BYTES_PER_PIXEL 2
+
+static unsigned char hextileBuffer[16][16 * BYTES_PER_PIXEL];
+
+
+void FillSubRectangle(unsigned char x, unsigned char y, unsigned char w, unsigned char h, unsigned int pixel)
+{
+#if 0
+    for (unsigned char j = 0; j < tileH; j++)
+    {
+        for (unsigned char i = 0; i < tileW * bytes_per_pixel; i += bytes_per_pixel)
+        {
+                WritePixel(pixel);
+        }
+    }
+#endif
+}
+
+void FinishSubRectangles(void)
+{
+
 }
 
 void LcdInit(void)
