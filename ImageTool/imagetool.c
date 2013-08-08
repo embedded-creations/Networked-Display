@@ -41,6 +41,7 @@
 static const int bpp = 4;
 static int maxx, maxy;
 
+FILE* rfbFilePtr;
 
 
 int main (int argc, char** argv)
@@ -61,6 +62,13 @@ int main (int argc, char** argv)
     rfbScreen->alwaysShared = TRUE;
 
     MagickExportImagePixels(mw,0,0,maxx,maxy,"RGBA",CharPixel,rfbScreen->frameBuffer);
+
+    // open output file
+    rfbFilePtr=fopen("output.rfb","wb");
+    if(!rfbFilePtr) {
+        fprintf(stderr, "Could not open output.rfb\n");
+        return 0;
+    }
 
     /* initialize the server */
     rfbInitServer(rfbScreen);
@@ -121,9 +129,17 @@ int main (int argc, char** argv)
 
     rfbResetStats(cl);
 
+    cl->clientData = (void*)rfbFilePtr;
+
     rfbSendRectEncodingHextile(cl, 0, 0, maxx, maxy);
 
     rfbPrintStats(cl);
+
+    int i;
+    for(i=0; i<cl->ublen; i++)
+        fputc(*(cl->updateBuf+i),(FILE*)cl->clientData);
+
+    fclose(rfbFilePtr);
 
     // print number of bytes stored to buffer (should be equal to value in Stats)
     fprintf(stderr, "ublen = %d\n", cl->ublen);
