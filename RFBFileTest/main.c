@@ -39,22 +39,12 @@
 #include <string.h>
 #include <avr/pgmspace.h>
 #include "SpiLcd.h"
-//#include "ParallelLcd.h"
-#include "vnc.h"
-#include "VncServerComms.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/power.h>
-#include "debug.h"
-#include "Buttons.h"
 #include "hextile.h"
-
-#define VNC_BUFFER_MAX 200
-
-uint8_t vncBuffer[VNC_BUFFER_MAX];
-uint8_t vncResponseBuffer[MAXIMUM_VNCRESPONSE_SIZE];
-
-unsigned int vncBufferSize = 0;
+PROGMEM
+#include "image.h"
 
 
 /** Configures the board hardware and chip peripherals for the demo's functionality. */
@@ -68,18 +58,10 @@ void SetupHardware(void)
     //clock_prescale_set(clock_div_1);
 
     /* Hardware Initialization */
-    Buttons_Init();
 }
-
-uint16_t debugcounter2 = 0;
-
 
 
 unsigned char tempbuffer[MAX_TILE_SIZE];
-
-PROGMEM
-#include "image.h"
-
 
 
 /** Main program entry point. This routine contains the overall program flow, including initial
@@ -87,42 +69,13 @@ PROGMEM
  */
 int main(void)
 {
-    unsigned int vncRemainder;
-    unsigned int vncResponseSize = 0;
-    int retval;
-
     SetupHardware();
     DEBUG_INIT();
-    VncServerInit();
-    Vnc_Init();
+    LcdInit();
 
     sei();
 
     DEBUG_PRINTSTRING("\r\nInit!");
-
-#define BYTES_PER_PIXEL  2
-
-    uint16_t background = 0;
-    int i, j;
-
-    static unsigned char hextileBuffer[16][16 * BYTES_PER_PIXEL];
-
-    for (j = 0; j < 16; j++)
-    {
-        for (i = 0; i < 16 * BYTES_PER_PIXEL; i+=BYTES_PER_PIXEL)
-        {
-            hextileBuffer[ j ][ i ] = background;
-            if(BYTES_PER_PIXEL == 2)
-                hextileBuffer[ j ][ i+1 ] = background/256;
-        }
-    }
-
-
-#if 0
-    SetupTile(0,0,16,16);
-    //DrawHextile(16,16, 2, hextileBuffer);
-    DrawRawTile(16*16, 2, rawData + 1);
-#else
 
     // read in rectangle details from rfbfile
     unsigned int filex, filey, filew, fileh;
@@ -147,7 +100,6 @@ int main(void)
 
       position += ret;
     }
-#endif
 
 
     for(;;) {
@@ -155,63 +107,7 @@ int main(void)
     }
 
 
-#if 0
-    for (;;)
-    {
-        int response = VncServerGetData(vncBuffer + vncBufferSize, VNC_BUFFER_MAX - vncBufferSize);
 
-        if(response < 0)
-        {
-            // reset system
-            vncRemainder = 0;
-            vncBufferSize = 0;
-            Vnc_ResetSystem();
-            DEBUG_PRINTSTRING("ResetSystem ");
-            continue;
-        }
-        else
-        {
-            vncBufferSize += response;
-        }
-
-        retval = Vnc_ProcessVncBuffer(vncBuffer, vncBufferSize);
-
-        if (vncRemainder < 0)
-        {
-            // reset system
-            vncRemainder = 0;
-            vncBufferSize = 0;
-            Vnc_ResetSystem();
-            DEBUG_PRINTSTRING("ResetSystem2 ");
-            continue;
-        }
-
-        vncRemainder = (unsigned int)retval;
-
-        // move unused data to the front of the buffer
-        memcpy(vncBuffer, vncBuffer + (vncBufferSize - vncRemainder), vncRemainder);
-
-        vncBufferSize = vncRemainder;
-
-        Buttons_Handler();
-
-        // collect any data to send to the Vnc server and send it
-        if(!vncResponseSize)
-            vncResponseSize = Vnc_LoadResponseBuffer(vncResponseBuffer);
-
-        uint16_t vncResponseRemainder = VncServerSendResponse(vncResponseBuffer, vncResponseSize) - vncResponseSize;
-
-        if(vncResponseRemainder)
-        {
-            DEBUG_PRINTSTRING("TXfull");
-            memcpy(vncResponseBuffer, vncResponseBuffer + vncResponseRemainder,
-                    vncResponseSize - vncResponseRemainder);
-            vncResponseSize -= vncResponseRemainder;
-        }
-        else
-            vncResponseSize = 0;
-    }
-#endif
 }
 
 

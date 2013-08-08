@@ -1,9 +1,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-#include "VncDisplay.h"
 
-#if VNC_LCD_SELECTION == VNC_LCD_SPI
 
 #include "SpiLcd.h"
 
@@ -344,4 +342,3 @@ void LcdInit(void)
     ClearDisplay();
 }
 
-#endif
