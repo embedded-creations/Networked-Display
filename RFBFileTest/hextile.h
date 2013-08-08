@@ -7,6 +7,7 @@
 
 #define BPP 16
 
+#define MAX_TILE_SIZE   (16 * 16 * (BPP/8) + 1)
 
 #define rfbHextileRaw           (1 << 0)
 #define rfbHextileBackgroundSpecified   (1 << 1)
@@ -25,6 +26,6 @@
 void SetupHandleHextile(int rectx, int recty, int rectw, int recth);
 
 unsigned int
-HandleHextileBPP (uint8_t * rfbBuffer, unsigned int buffersize);
+HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize);
 
 #endif
