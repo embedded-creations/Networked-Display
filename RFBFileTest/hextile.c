@@ -79,7 +79,7 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
     //int sx, sy, sw, sh;
     uint8_t subencoding;
     uint8_t nSubrects;
-    unsigned char readLength;
+    unsigned int readLength;
 
     unsigned int progress = 0;
 
@@ -91,10 +91,21 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
             if (ry+rh - y < 16)
                 h = ry+rh - y;
 
+#if 0
+            DEBUG_PRINTSTRING("Progress=");
+            DEBUG_PRINTHEX(progress/256);
+            DEBUG_PRINTHEX(progress);
+#endif
+
             if(buffersize-progress < 1)
                 return progress;
 
             subencoding = rfbBuffer[progress];
+
+#if 0
+            DEBUG_PRINTSTRING("Subenc=");
+            DEBUG_PRINTHEX(subencoding);
+#endif
 
             // calculate length here:
             // start with subencoding byte

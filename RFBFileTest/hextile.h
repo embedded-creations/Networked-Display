@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "SpiLcd.h"
+#include "Debug.h"
 
 #define BPP 16
 
