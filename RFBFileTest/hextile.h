@@ -8,6 +8,7 @@
 #define BPP 16
 
 #define MAX_TILE_SIZE   (16 * 16 * (BPP/8) + 1)
+#define RFBFILE_HEADER_SIZE 12
 
 #define rfbHextileRaw           (1 << 0)
 #define rfbHextileBackgroundSpecified   (1 << 1)

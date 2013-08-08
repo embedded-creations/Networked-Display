@@ -91,18 +91,18 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
             if (ry+rh - y < 16)
                 h = ry+rh - y;
 
-#if 0
+            if(buffersize-progress < 1)
+                return progress;
+
+#if 1
             DEBUG_PRINTSTRING("Progress=");
             DEBUG_PRINTHEX(progress/256);
             DEBUG_PRINTHEX(progress);
 #endif
 
-            if(buffersize-progress < 1)
-                return progress;
-
             subencoding = rfbBuffer[progress];
 
-#if 0
+#if 1
             DEBUG_PRINTSTRING("Subenc=");
             DEBUG_PRINTHEX(subencoding);
 #endif
