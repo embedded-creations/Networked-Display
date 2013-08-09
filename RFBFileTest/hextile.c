@@ -87,7 +87,7 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
 
     unsigned int progress = 0;
 
-    for (y = y; y < ry+rh; y += 16, x=0) {
+    for (y = y; y < ry+rh; y += 16, x=rx) {
         for (x = x; x < rx+rw; x += 16) {
             w = h = 16;
             if (rx+rw - x < 16)
