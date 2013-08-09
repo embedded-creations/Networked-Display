@@ -63,6 +63,8 @@ void SetupHardware(void)
 
 unsigned char tempbuffer[MAX_TILE_SIZE];
 
+int membefore;
+int memafter;
 
 /** Main program entry point. This routine contains the overall program flow, including initial
  *  setup of all components and the main program loop.
@@ -70,7 +72,8 @@ unsigned char tempbuffer[MAX_TILE_SIZE];
 int main(void)
 {
     SetupHardware();
-    DEBUG_INIT();
+    DEBUG_INITUART();
+    DEBUG_SET_GPIOS_OUTPUT();
     LcdInit();
 
     sei();
@@ -96,9 +99,20 @@ int main(void)
 
         memcpy_P(tempbuffer, rawData + position, remaining);
 
+        membefore = freeMemory();
+
         int ret = HandleHextile16(tempbuffer, remaining);
 
         position += ret;
+
+#if 0
+        DEBUG_PRINTSTRING("before:");
+        DEBUG_PRINTHEX(membefore/256);
+        DEBUG_PRINTHEX(membefore);
+        DEBUG_PRINTSTRING("after:");
+        DEBUG_PRINTHEX(memafter/256);
+        DEBUG_PRINTHEX(memafter);
+#endif
     }
 
     for(;;) {

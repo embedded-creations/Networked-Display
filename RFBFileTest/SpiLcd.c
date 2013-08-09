@@ -318,14 +318,16 @@ void DrawHextile(unsigned char tileW, unsigned char tileH)
     }
 }
 
+extern int memafter;
+
 void FillSubRectangle(unsigned char x, unsigned char y, unsigned char w, unsigned char h, unsigned int pixel)
 {
     for (unsigned char j = y; j < y + h; j++)
     {
         for (unsigned char i = x; i < x + w; i++)
         {
-            //hextileBuffer[j][i] = ((pixel/256)) + ((pixel&0x00ff)*256);
             hextileBuffer[j][i] = pixel;
+            memafter = freeMemory();
         }
     }
 }

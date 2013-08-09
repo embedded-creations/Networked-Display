@@ -50,7 +50,8 @@ SRC =	main.c \
 	usb_serial.c \
 	buffuart.c \
 	SpiLcd.c \
-	hextile.c
+	hextile.c \
+	MemoryFree.c
 
 
 # MCU name, you MUST set this to match the board you are using

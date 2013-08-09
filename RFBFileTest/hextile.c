@@ -51,6 +51,7 @@
  */
 
 #include "hextile.h"
+#include <avr/io.h>
 
 
 #define HandleHextileBPP CONCAT2E(HandleHextile,BPP)
@@ -118,24 +119,27 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                 readLength += w * h * (BPP / 8);
             } else {
                 if(subencoding & rfbHextileBackgroundSpecified) {
-                    if(buffersize-progress < readLength + sizeof(bg))
+                    if(buffersize-progress < readLength + sizeof(bg)) {
                         return progress;
+                    }
 
                     GET_PIXEL16(bg, rfbBuffer + progress + readLength);
                     readLength += sizeof(bg);
                 }
 
                 if(subencoding & rfbHextileForegroundSpecified) {
-                    if(buffersize-progress < readLength + sizeof(fg))
+                    if(buffersize-progress < readLength + sizeof(fg)) {
                         return progress;
+                    }
 
                     GET_PIXEL16(fg, rfbBuffer + progress + readLength);
                     readLength += sizeof(fg);
                 }
 
                 if (subencoding & rfbHextileAnySubrects) {
-                    if(buffersize-progress < readLength)
+                    if(buffersize-progress < readLength) {
                         return progress;
+                    }
 
                     nSubrects = rfbBuffer[progress + readLength];
 
@@ -174,18 +178,23 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                 continue;
             }
 
+            DEBUG_SET_GPIO0_HIGH();
+
             SetupTile(x,y,w,h);
             FillSubRectangle(0,0,w,h,bg);
+
+            DEBUG_SET_GPIO0_LOW();
 
             int i;
 
             for (i = 0; i < nSubrects; i++) {
+                DEBUG_SET_GPIO1_HIGH();
 
                 if (subencoding & rfbHextileSubrectsColoured) {
                     GET_PIXEL16(fg, ptr);
                     ptr += sizeof(fg);
                 }
-                //fg = 0x5555;
+
                 sx = rfbHextileExtractX(*ptr);
                 sy = rfbHextileExtractY(*ptr);
                 ptr++;
@@ -193,9 +202,10 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                 sh = rfbHextileExtractH(*ptr);
                 ptr++;
 
-              FillSubRectangle(sx, sy, sw, sh, fg);
-            }
+                FillSubRectangle(sx, sy, sw, sh, fg);
 
+                DEBUG_SET_GPIO1_LOW();
+            }
             DrawHextile(w,h);
 
             progress += readLength;
