@@ -78,7 +78,6 @@ void SetupHandleHextile(int rectx, int recty, int rectw, int recth) {
 unsigned int
 HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
 {
-    int i;
     uint8_t *ptr;
     int sx, sy, sw, sh;
     uint8_t subencoding;
@@ -94,6 +93,8 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                 w = rx+rw - x;
             if (ry+rh - y < 16)
                 h = ry+rh - y;
+
+            nSubrects = 0;
 
             if(buffersize-progress < 1)
                 return progress;
@@ -117,6 +118,15 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
 
             if(subencoding & rfbHextileRaw) {
                 readLength += w * h * (BPP / 8);
+
+                if(buffersize-progress < readLength)
+                    return progress;
+
+                SetupTile(x,y,w,h);
+                DrawRawTile(w*h, BPP/8, rfbBuffer + progress + 1);
+
+                progress += readLength;
+                continue;
             } else {
                 if(subencoding & rfbHextileBackgroundSpecified) {
                     if(buffersize-progress < readLength + sizeof(bg)) {
@@ -157,59 +167,49 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                     else
                         readLength += nSubrects * 2;
                 }
-                else
-                    nSubrects = 0;
-            }
 
-            if(buffersize-progress < readLength)
-                return progress;
+                if(buffersize-progress < readLength)
+                    return progress;
 
-#if 0
-            DEBUG_PRINTSTRING("readLen=");
-            DEBUG_PRINTHEX(readLength/256);
-            DEBUG_PRINTHEX(readLength);
-#endif
+    #if 0
+                DEBUG_PRINTSTRING("readLen=");
+                DEBUG_PRINTHEX(readLength/256);
+                DEBUG_PRINTHEX(readLength);
+    #endif
 
-            if (subencoding & rfbHextileRaw) {
+                DEBUG_SET_GPIO0_HIGH();
+
                 SetupTile(x,y,w,h);
-                DrawRawTile(w*h, BPP/8, rfbBuffer + progress + 1);
+                FillSubRectangle(0,0,w,h,bg);
+
+                DEBUG_SET_GPIO0_LOW();
+
+                int i;
+
+                for (i = 0; i < nSubrects; i++) {
+                    DEBUG_SET_GPIO1_HIGH();
+
+                    if (subencoding & rfbHextileSubrectsColoured) {
+                        GET_PIXEL16(fg, ptr);
+                        ptr += sizeof(fg);
+                    }
+
+                    sx = rfbHextileExtractX(*ptr);
+                    sy = rfbHextileExtractY(*ptr);
+                    ptr++;
+                    sw = rfbHextileExtractW(*ptr);
+                    sh = rfbHextileExtractH(*ptr);
+                    ptr++;
+
+                    FillSubRectangle(sx, sy, sw, sh, fg);
+
+                    DEBUG_SET_GPIO1_LOW();
+                }
+                DrawHextile(w,h);
 
                 progress += readLength;
                 continue;
             }
-
-            DEBUG_SET_GPIO0_HIGH();
-
-            SetupTile(x,y,w,h);
-            FillSubRectangle(0,0,w,h,bg);
-
-            DEBUG_SET_GPIO0_LOW();
-
-            int i;
-
-            for (i = 0; i < nSubrects; i++) {
-                DEBUG_SET_GPIO1_HIGH();
-
-                if (subencoding & rfbHextileSubrectsColoured) {
-                    GET_PIXEL16(fg, ptr);
-                    ptr += sizeof(fg);
-                }
-
-                sx = rfbHextileExtractX(*ptr);
-                sy = rfbHextileExtractY(*ptr);
-                ptr++;
-                sw = rfbHextileExtractW(*ptr);
-                sh = rfbHextileExtractH(*ptr);
-                ptr++;
-
-                FillSubRectangle(sx, sy, sw, sh, fg);
-
-                DEBUG_SET_GPIO1_LOW();
-            }
-            DrawHextile(w,h);
-
-            progress += readLength;
-            continue;
         }
     }
 
