@@ -5,9 +5,9 @@
 #include "SpiLcd.h"
 #include "Debug.h"
 
-#define BPP 16
+#define HEXTILE_BPP 16
 
-#define MAX_TILE_SIZE   (16 * 16 * (BPP/8) + 1)
+#define MAX_TILE_SIZE   (16 * 16 * (HEXTILE_BPP/8) + 1)
 #define RFBFILE_HEADER_SIZE 12
 
 #define rfbHextileRaw           (1 << 0)

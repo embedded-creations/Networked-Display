@@ -54,8 +54,8 @@
 #include <avr/io.h>
 
 
-#define HandleHextileBPP CONCAT2E(HandleHextile,BPP)
-//#define CARDBPP CONCAT3E(uint,BPP,_t)
+#define HandleHextileBPP CONCAT2E(HandleHextile,HEXTILE_BPP)
+//#define CARDBPP CONCAT3E(uint,HEXTILE_BPP,_t)
 #define CARDBPP uint16_t
 
 static int x, y, w, h;
@@ -117,13 +117,13 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
             readLength = 1;
 
             if(subencoding & rfbHextileRaw) {
-                readLength += w * h * (BPP / 8);
+                readLength += w * h * (HEXTILE_BPP / 8);
 
                 if(buffersize-progress < readLength)
                     return progress;
 
                 SetupTile(x,y,w,h);
-                DrawRawTile(w*h, BPP/8, rfbBuffer + progress + 1);
+                DrawRawTile(w*h, rfbBuffer + progress + 1);
 
                 progress += readLength;
                 continue;
@@ -163,7 +163,7 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                     ptr = rfbBuffer + progress + readLength;
 
                     if (subencoding & rfbHextileSubrectsColoured)
-                        readLength += nSubrects * (2 + (BPP / 8));
+                        readLength += nSubrects * (2 + (HEXTILE_BPP / 8));
                     else
                         readLength += nSubrects * 2;
                 }
