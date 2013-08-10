@@ -5,9 +5,9 @@
 #include "SpiLcd.h"
 #include "Debug.h"
 
-#define HEXTILE_BPP 16
+#define HEXTILE_BPP 8
 
-#define MAX_TILE_SIZE   (16 * 16 * (HEXTILE_BPP/8) + 1)
+#define MAX_TILE_SIZE   (16 * ((16 * HEXTILE_BPP)/8) + 1)
 #define RFBFILE_HEADER_SIZE 12
 
 #define rfbHextileRaw           (1 << 0)
@@ -27,6 +27,6 @@
 void SetupHandleHextile(int rectx, int recty, int rectw, int recth);
 
 unsigned int
-HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize);
+HandleHextile (uint8_t * rfbBuffer, unsigned int buffersize);
 
 #endif

@@ -3,7 +3,17 @@
 
 #include <stdint.h>
 
-#define LCD_BPP     16
+#define LCD_BPP     8
+
+#if (LCD_BPP == 16)
+#   define CARDBPP uint16_t
+#endif
+#if (LCD_BPP == 8)
+#   define CARDBPP uint8_t
+#endif
+#if (LCD_BPP == 1)
+#   define CARDBPP uint8_t
+#endif
 
 void LcdInit(void);
 void SetupTile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsigned char tileH);

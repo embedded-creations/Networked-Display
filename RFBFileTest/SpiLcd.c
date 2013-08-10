@@ -292,14 +292,21 @@ void SetupTile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsi
     write_command(0x2C); // memory write
 }
 
-static uint16_t hextileBuffer[16][(LCD_BPP * 16)/8];
+static CARDBPP hextileBuffer[16][16];
 
 void DrawRawTile(unsigned int pixelCount, uint8_t pixelBuffer[]) {
-    for (unsigned int i = 0; i < pixelCount * (LCD_BPP/8); i+=(LCD_BPP/8)) {
+    for (unsigned int i = 0; i < pixelCount; i++) {
+#if (LCD_BPP == 16)
+        WritePixel(pixelBuffer[i*2] + pixelBuffer[(i*2)+1]*256);
+#endif
 #if (LCD_BPP == 8)
         Write8bitPixel(pixelBuffer[i]);
-#else
-        WritePixel(pixelBuffer[i] + pixelBuffer[i+1]*256);
+#endif
+#if (LCD_BPP == 1)
+        uint16_t pixel = 0;
+        if(pixelBuffer[i/8] & (1<<(i%8)))
+            pixel = 0xffff;
+        WritePixel(pixel);
 #endif
     }
 }
@@ -308,7 +315,19 @@ void DrawRawTile(unsigned int pixelCount, uint8_t pixelBuffer[]) {
 void DrawHextile(unsigned char tileW, unsigned char tileH) {
     for (unsigned char j = 0; j < tileH; j++) {
         for (unsigned char i = 0; i < tileW; i++) {
+#if (LCD_BPP == 16)
             WritePixel(hextileBuffer[j][i]);
+#endif
+#if (LCD_BPP == 8)
+            Write8bitPixel(hextileBuffer[j][i]);
+#endif
+#if (LCD_BPP == 1)
+            uint16_t pixel = 0;
+            if(hextileBuffer[j][i])
+                pixel = 0xffff;
+            WritePixel(pixel);
+#endif
+
         }
     }
 }

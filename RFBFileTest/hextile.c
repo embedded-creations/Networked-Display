@@ -54,9 +54,19 @@
 #include <avr/io.h>
 
 
-#define HandleHextileBPP CONCAT2E(HandleHextile,HEXTILE_BPP)
-//#define CARDBPP CONCAT3E(uint,HEXTILE_BPP,_t)
-#define CARDBPP uint16_t
+#if (HEXTILE_BPP == 16)
+#   define CARDBPP uint16_t
+#   define GET_PIXEL(pix, ptr) (((uint8_t*)&(pix))[0] = *(ptr), \
+                   ((uint8_t*)&(pix))[1] = *(ptr+1))
+#endif
+#if (HEXTILE_BPP == 8)
+#   define CARDBPP uint8_t
+#   define GET_PIXEL(pix, ptr) (((uint8_t*)&(pix))[0] = *(ptr))
+#endif
+#if (HEXTILE_BPP == 1)
+#   define CARDBPP uint8_t
+#   define GET_PIXEL(pix, ptr) (((uint8_t*)&(pix))[0] = *(ptr))
+#endif
 
 static int x, y, w, h;
 static int rx, ry, rw, rh;
@@ -72,11 +82,9 @@ void SetupHandleHextile(int rectx, int recty, int rectw, int recth) {
     y = ry;
 }
 
-#define GET_PIXEL16(pix, ptr) (((uint8_t*)&(pix))[0] = *(ptr), \
-                   ((uint8_t*)&(pix))[1] = *(ptr+1))
 
 unsigned int
-HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
+HandleHextile (uint8_t * rfbBuffer, unsigned int buffersize)
 {
     uint8_t *ptr;
     int sx, sy, sw, sh;
@@ -117,8 +125,13 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
             readLength = 1;
 
             if(subencoding & rfbHextileRaw) {
+#if HEXTILE_BPP >= 8
                 readLength += w * h * (HEXTILE_BPP / 8);
-
+#else
+                readLength += w * h / 8;
+                if(w*h % 8)
+                    readLength++;
+#endif
                 if(buffersize-progress < readLength)
                     return progress;
 
@@ -133,7 +146,7 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                         return progress;
                     }
 
-                    GET_PIXEL16(bg, rfbBuffer + progress + readLength);
+                    GET_PIXEL(bg, rfbBuffer + progress + readLength);
                     readLength += sizeof(bg);
                 }
 
@@ -142,7 +155,7 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                         return progress;
                     }
 
-                    GET_PIXEL16(fg, rfbBuffer + progress + readLength);
+                    GET_PIXEL(fg, rfbBuffer + progress + readLength);
                     readLength += sizeof(fg);
                 }
 
@@ -171,11 +184,11 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                 if(buffersize-progress < readLength)
                     return progress;
 
-    #if 0
+#if 0
                 DEBUG_PRINTSTRING("readLen=");
                 DEBUG_PRINTHEX(readLength/256);
                 DEBUG_PRINTHEX(readLength);
-    #endif
+#endif
 
                 DEBUG_SET_GPIO0_HIGH();
 
@@ -190,7 +203,7 @@ HandleHextile16 (uint8_t * rfbBuffer, unsigned int buffersize)
                     DEBUG_SET_GPIO1_HIGH();
 
                     if (subencoding & rfbHextileSubrectsColoured) {
-                        GET_PIXEL16(fg, ptr);
+                        GET_PIXEL(fg, ptr);
                         ptr += sizeof(fg);
                     }
 

@@ -101,7 +101,7 @@ int main(void)
 
         membefore = freeMemory();
 
-        int ret = HandleHextile16(tempbuffer, remaining);
+        int ret = HandleHextile(tempbuffer, remaining);
 
         position += ret;
 
