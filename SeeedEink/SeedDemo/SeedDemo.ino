@@ -3,7 +3,7 @@
     displayChar(INT8U x,INT8U y,INT16U unicode_Char);
 */
 
-#include <Eink.h>
+#include "Eink.h"
 #include <SPI.h>
 INT8U dimensionalData[]=
 {
