@@ -13,13 +13,8 @@ INT8U dimensionalData[]=
   0x7F,0x7F,0x7F,0x7F,0x7F,0x7F,0x7F,0xFF,0x7F,0x7F,0xFF,0xFF,0x7F,0xFF,0xFF,0x7F,0xFF,0x7F,0xFF,0xFF,0xFF,0xFF,0x7F,0x7F,0x7F,
  };
  
-void setup()
-{
-SPI.begin();
-
-Eink.clearScreen();// clear the screen
-
-Eink.displayChar(0,130,'A');
+void drawPattern() {
+ Eink.displayChar(0,130,'A');
 Eink.displayChar(0,122,'B');
 Eink.displayChar(0,114,'C');
 Eink.displayChar(0,106,'D');
@@ -54,5 +49,23 @@ Eink.displayChar(10,50,0x0e1a);
 
 Eink.refreshScreen(); 
 }
+ 
+void setup()
+{
+  SPI.begin();
+
+  Eink.clearScreen();// clear the screen
+
+  //Eink.refreshScreen(); 
+}
+
 void loop()
-{}
+{
+  drawPattern();
+  Eink.refreshScreen(); 
+  delay(2000);
+
+  Eink.clearScreen();// clear the screen
+  Eink.refreshScreen(); 
+  delay(2000);
+}
