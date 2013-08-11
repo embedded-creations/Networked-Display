@@ -64,11 +64,9 @@ refresh the screen, need to be called by application every time  the screen chan
 --------------*/
 void E_ink::refreshScreen(void)
 {
-  writeComm(0x20);
+  writeComm(0x20); // Master Activation
   closeBump();
   delay(5000);
-  
-  
 }
 
 
@@ -79,13 +77,16 @@ void E_ink::clearScreen(void)
 {
    INT16U i;
    initEink();
-   writeComm(0x24);
+   writeComm(0x24); // Write RAM
    for(i=0;i<3096;i++)
    {
      writeData(0xff);
    }
    delay(1000); 
  }
+ 
+
+ 
 /*By the character machine code,get dot matrix data of the character*/ 
 void E_ink::getCharMatrixData(INT16U unicode_Char)
 {
@@ -334,9 +335,9 @@ void E_ink::setPositionXY(INT8U Xs, INT8U Xe,INT8U Ys,INT8U Ye)
 
 void E_ink::closeBump(void)
 {
-  writeComm(0x22);   
-  writeData(0x03);
-  writeComm(0x20);
+  writeComm(0x22);   // display update
+  writeData(0x03);  // disable CP, then disable clock signal
+  writeComm(0x20);  // master activation
 }
  
  
@@ -465,8 +466,8 @@ void E_ink::converChineseMatrixData(void)
       matrixdata_conver[i+16]=tempData>>8;  //save data at matrixdata_conver[32]~matrixdata_conver[47]
       matrixdata_conver[i+32]=tempData;     //save data at matrixdata_conver[48]~matrixdata_conver[63]
     }
-
 }
+
 /*
 conver the two-dimensional data:
 convert the array dimensionalData[] data,and save convert result in array matrixdata_conver[]; 
