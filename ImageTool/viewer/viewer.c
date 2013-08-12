@@ -59,6 +59,7 @@ static void SaveFramebufferAsImage(rfbClient* client, int x, int y, int w, int h
                 fullFrameBuffer[i * 4 + 3] = 0;
 
             } else {
+                // TODO: translate the colors
                 fullFrameBuffer[i * 4] = client->frameBuffer[i];
                 fullFrameBuffer[i * 4 + 1] = client->frameBuffer[i];
                 fullFrameBuffer[i * 4 + 2] = client->frameBuffer[i];
@@ -109,7 +110,7 @@ main(int argc, char **argv)
        listenForIncomingConnections() returns, setting the listenSpecified
        flag. */
 
-#if 0
+#if 1
     // setup client with 8bpp true color
     client->format.bitsPerPixel = 8;
     client->format.depth = 8;
@@ -121,7 +122,7 @@ main(int argc, char **argv)
     client->format.blueShift = 2;
 #endif
 
-#if 1
+#if 0
     // setup client with 8bpp 1bit depth
     client->format.bitsPerPixel = 8;
     client->format.depth = 1;

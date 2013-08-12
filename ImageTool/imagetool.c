@@ -40,6 +40,7 @@
 
 static const int bpp = 4;
 static int maxx, maxy;
+static int minx=0, miny=0;
 
 FILE* rfbFilePtr;
 
@@ -53,6 +54,12 @@ int main (int argc, char** argv)
     MagickReadImage(mw,"input.bmp");
     maxx = MagickGetImageWidth(mw);
     maxy = MagickGetImageHeight(mw);
+
+    maxx = 20+60;
+    maxy = 20+80;
+
+    //minx = 20;
+    //miny = 20;
 
     rfbScreenInfoPtr rfbScreen = rfbGetScreen(&argc, argv, maxx, maxy, 8, 3, bpp);
     if (!rfbScreen)
@@ -98,7 +105,7 @@ int main (int argc, char** argv)
     cl->format.greenShift = 0;
     cl->format.blueShift = 12;
 #endif
-#if 1
+#if 0
     // setup client with 16bpp, color matching 1.8" LCD
     cl->format.bitsPerPixel = 16;
     cl->format.depth = 16;
@@ -109,6 +116,19 @@ int main (int argc, char** argv)
     cl->format.greenShift = 5;
     cl->format.blueShift = 0;
 #endif
+
+#if 1
+    // setup client with 8bpp, color matching 1.8" LCD
+    cl->format.bitsPerPixel = 8;
+    cl->format.depth = 8;
+    cl->format.redMax = 0x7;
+    cl->format.greenMax = 0x7;
+    cl->format.blueMax = 0x3;
+    cl->format.redShift = 0;
+    cl->format.greenShift = 3;
+    cl->format.blueShift = 6;
+#endif
+
 
 #if 0
     // setup client with 8bpp true color
@@ -143,7 +163,7 @@ int main (int argc, char** argv)
 
     cl->clientData = (void*)rfbFilePtr;
 
-    rfbSendRectEncodingHextile(cl, 0, 0, maxx, maxy);
+    rfbSendRectEncodingHextile(cl, minx, miny, maxx-minx, maxy-miny);
 
     rfbPrintStats(cl);
 
