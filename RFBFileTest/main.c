@@ -39,6 +39,7 @@
 #include <string.h>
 #include <avr/pgmspace.h>
 #include "SpiLcd.h"
+#include "eink.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/power.h>
@@ -75,10 +76,18 @@ int main(void)
     DEBUG_INITUART();
     DEBUG_SET_GPIOS_OUTPUT();
     LcdInit();
+    refreshScreen();
 
     sei();
 
     DEBUG_PRINTSTRING("\r\nInit!");
+
+    while(1) {
+      _delay_ms(2000);
+      clearScreen();
+      refreshScreen();
+    }
+
 
     // read in rectangle details from rfbfile
     unsigned int filex, filey, filew, fileh;
@@ -86,6 +95,18 @@ int main(void)
     filey = pgm_read_byte(rawData + 2)*256 + pgm_read_byte(rawData + 3);
     filew = pgm_read_byte(rawData + 4)*256 + pgm_read_byte(rawData + 5);
     fileh = pgm_read_byte(rawData + 6)*256 + pgm_read_byte(rawData + 7);
+
+#if 0
+        DEBUG_PRINTSTRING("x");
+        DEBUG_PRINTHEX(filex);
+        DEBUG_PRINTSTRING("y");
+        DEBUG_PRINTHEX(filey);
+        DEBUG_PRINTSTRING("w");
+        DEBUG_PRINTHEX(filew);
+        DEBUG_PRINTSTRING("h");
+        DEBUG_PRINTHEX(fileh);
+#endif
+
 
     SetupHandleHextile(filex,filey,filew,fileh);
 

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "SpiLcd.h"
+#include "eink.h"
 #include "Debug.h"
 
 #define HEXTILE_BPP 8

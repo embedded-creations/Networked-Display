@@ -5,6 +5,8 @@
 
 #include "SpiLcd.h"
 
+#if (SPI_LCD_ENABLED == 1)
+
 
 #define DDR_SPI_MOSI     DDRB
 #define PORT_SPI_MOSI    PORTB
@@ -353,4 +355,5 @@ void LcdInit(void) {
 
     ClearDisplay();
 }
+#endif
 

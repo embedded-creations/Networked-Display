@@ -3,30 +3,40 @@
 
 
 
-#include "SpiLcd.h"
+#include "eink.h"
 
 
-#define DDR_SPI_MOSI     DDRB
-#define PORT_SPI_MOSI    PORTB
-#define DDR_SPI_SCK      DDRB
-#define PORT_SPI_SCK     PORTB
-#define PORT_SPI_SS      PORTB
+#define DDR_SPI         DDRB
+#define PORT_SPI        PORTB
+#define DDR_EINK        DDRD
+#define PORT_EINK       PORTD
 
-#define DDR_LCD_CS       DDRD
-#define PORT_LCD_CS      PORTD
-#define DDR_LCD_A0       DDRD
-#define PORT_LCD_A0      PORTD
-#define DDR_LCD_RES      DDRD
-#define PORT_LCD_RES     PORTD
+#define DD_MOSI         PB2
+#define DD_SCK          PB1
+#define DD_SPI_SS       PB0 // not actually connected to the LCD, but needs to be pulled up (low signal on this line sets SPI to slave mode)
 
-#define DD_MOSI PB2
-#define DD_SCK  PB1
-#define DD_LCD_CS   PD4
-#define DD_A0   PD5
-#define DD_RES  PD6
-#define DD_SPI_SS   PB0 // not actually connected to the LCD, but needs to be pulled up (low signal on this line sets SPI to slave mode)
+#define DD_EINK_CS1     PD6
+#define DD_EINK_DC      PD5
+#define DD_EINK_CS2     PD4
+
+#define Eink_CS1_LOW  {DDR_EINK |= (1<<DD_EINK_CS1);PORT_EINK &=~ (1<<DD_EINK_CS1);}
+#define Eink_CS1_HIGH {DDR_EINK |= (1<<DD_EINK_CS1);PORT_EINK |=  (1<<DD_EINK_CS1);}
+#define Eink_DC_LOW   {DDR_EINK |= (1<<DD_EINK_DC); PORT_EINK &=~ (1<<DD_EINK_DC);}
+#define Eink_DC_HIGH  {DDR_EINK |= (1<<DD_EINK_DC); PORT_EINK |=  (1<<DD_EINK_DC);}
+#define GT_CS2_LOW    {DDR_EINK |= (1<<DD_EINK_CS2);PORT_EINK &=~ (1<<DD_EINK_CS2);}
+#define GT_CS2_HIGH   {DDR_EINK |= (1<<DD_EINK_CS2);PORT_EINK |=  (1<<DD_EINK_CS2);}
 
 
+ void clearScreen(void);
+ void refreshScreen(void);
+
+ void  writeComm(uint8_t Command);
+ void  writeData(uint8_t data);
+
+ void  initEink(void);
+ void  closeBump(void);
+ void  configureLUTRegister(void);
+ void  setPositionXY(unsigned char Xs, unsigned char Xe,unsigned char Ys,unsigned char Ye);
 
 
 void SPI_MasterTransmit (char cData)
@@ -37,214 +47,123 @@ void SPI_MasterTransmit (char cData)
     while (!(SPSR & (1 << SPIF)));
 }
 
-void SpiLcdSetup(void)
+void writeComm (uint8_t c)
 {
-    PORT_LCD_A0 |= (1 << DD_A0);
-    PORT_LCD_CS |= (1 << DD_LCD_CS);
-    DDR_LCD_A0 |= (1 << DD_A0);
-    DDR_LCD_CS |= (1 << DD_LCD_CS);
-
-    /* Set MOSI and SCK output, all others input */
-    DDR_SPI_MOSI |= (1 << DD_MOSI);
-    DDR_SPI_SCK |= (1 << DD_SCK);
-
-    PORT_SPI_SS |= (1 << DD_SPI_SS); // make this pin pulled up to avoid low level during SPI transfer, which would set SPI to slave mode
-
-    /* Enable SPI, Master*/
-    SPCR = (1 << SPE) | (1 << MSTR);
-
-    // set SCK frequency = fosc/2
-    SPSR = (1 << SPI2X);
-}
-
-
-void write_command (uint8_t c)
-{
-    PORT_LCD_A0 &= ~(1 << DD_A0);
-    PORT_LCD_CS &= ~(1 << DD_LCD_CS);
+  Eink_CS1_HIGH;
+  Eink_DC_LOW;
+  Eink_CS1_LOW;
 
     SPI_MasterTransmit(c);
-    PORT_LCD_CS |= (1 << DD_LCD_CS);
+  Eink_CS1_HIGH;
 }
 
-void write_data (uint8_t d)
+void writeData (uint8_t d)
 {
-    PORT_LCD_A0 |= (1 << DD_A0);
-    PORT_LCD_CS &= ~(1 << DD_LCD_CS);
+  Eink_CS1_HIGH;
+  Eink_DC_HIGH;
+  Eink_CS1_LOW;
 
     SPI_MasterTransmit(d);
-    PORT_LCD_CS |= (1 << DD_LCD_CS);
+  Eink_CS1_HIGH;
 }
 
-void LCD_DataWrite(uint8_t LCD_DataH,uint8_t LCD_DataL)
+
+
+void initEink (void)
 {
-    write_data(LCD_DataH);
-    write_data(LCD_DataL);
+  writeComm(0x10);//exit deep sleep mode
+  writeData(0x00);
+  writeComm(0x11);//data enter mode
+  writeData(0x03);
+  writeComm(0x44);//set RAM x address start/end, in page 36
+  writeData(0x00);//RAM x address start at 00h;
+  writeData(0x11);//RAM x address end at 11h(17)->72: [because 1F(31)->128 and 12(18)->76]
+  writeComm(0x45);//set RAM y address start/end, in page 37
+  writeData(0x00);//RAM y address start at 00h;
+  writeData(0xAB);//RAM y address start at ABh(171)->172: [because B3(179)->180]
+  writeComm(0x4E);//set RAM x address count to 0;
+  writeData(0x00);
+  writeComm(0x4F);//set RAM y address count to 0;
+  writeData(0x00);
+  writeComm(0x21);//bypass RAM data
+  writeData(0x03);
+  writeComm(0xF0);//booster feedback used, in page 37
+  writeData(0x1F);
+
+
+  writeComm(0x2C);//vcom
+  writeData(0xA0);
+  writeComm(0x3C);//boarder waveform
+  writeData(0x63);
+  writeComm(0x22);//display updata sequence option ,in page 33
+  writeData(0xC4);//enable sequence: clk -> CP -> LUT -> initial display -> pattern display
+
+  configureLUTRegister();
 }
 
-void dsp_single_colour(uint8_t DH, uint8_t DL)
+
+void refreshScreen(void)
 {
-    uint8_t i,j;
- //RamAdressSet();
- for (i=0;i<160;i++)
-    for (j=0;j<128;j++)
-        LCD_DataWrite(DH,DL);
+  writeComm(0x20); // Master Activation
+  closeBump();
+  _delay_ms(5000);
 }
 
-
-void SlowLoadDisplay(void)
+void clearScreen(void)
 {
-    uint8_t i,j;
- //RamAdressSet();
- for (i=0;i<160;i++)
-    for (j=0;j<128;j++)
-    {
-        LCD_DataWrite(0,0);
-        _delay_ms(25);
-    }
-}
+   int i;
+   initEink();
+   writeComm(0x24); // Write RAM
+   for(i=0;i<3096;i++)
+   {
+     writeData(0xff);
+   }
+   _delay_ms(1000);
+ }
 
-
-
-void lcd_initial (void)
+void setPositionXY(unsigned char Xs, unsigned char Xe,unsigned char Ys,unsigned char Ye)
 {
-    // hardware reset (minimum 10us pulse)
-    DDR_LCD_RES |= (1 << DD_RES);
-    _delay_ms(1);
-    PORT_LCD_RES |= (1 << DD_RES);
-
-    // sleep out command can't be sent for 120ms after releasing Reset
-    _delay_ms(120);
-//------------------------------------------------------------------//
-//-------------------Software Reset-------------------------------//
-    write_command(0x11); //Sleep out
-
-    // When IC is in Sleep In mode, it is necessary to wait 120msec before sending next command
-    _delay_ms(120);
-
-    // ST7735R Frame Rate (Frame rate=fosc/((RTNA + 20) x (LINE + FPA + BPA)))
-    // default values are written for all (unnecessary?)
-    // normal/full
-    write_command(0xB1);
-    write_data(0x01); // RTNA = 1
-    write_data(0x2C); // FPA = 0x2C
-    write_data(0x2D); // BPA = 0x2D
-
-    // idle/8
-    write_command(0xB2);
-    write_data(0x01);
-    write_data(0x2C);
-    write_data(0x2D);
-
-    // partial/full
-    write_command(0xB3);
-    write_data(0x01);
-    write_data(0x2C);
-    write_data(0x2D);
-    write_data(0x01);
-    write_data(0x2C);
-    write_data(0x2D);
-    //------------------------------------End ST7735R Frame Rate-----------------------------------------//
-    write_command(0xB4); //Column inversion
-    write_data(0x07); // frame inversion for all modes
-    //------------------------------------ST7735R Power Sequence-----------------------------------------//
-    write_command(0xC0);
-    write_data(0xA2); // values and number of values don't seem to match spec - default is 2, 0xA2 is setting don't cares
-    write_data(0x02); // default is 0x70
-    write_data(0x84); // there's only two parameters, what's this third?
-    write_command(0xC1);
-    write_data(0xC5); // default is 5, C5 is setting don't care bits
-    write_command(0xC2);
-    write_data(0x0A); // default is 1, 0xA = medium low + don't cares
-    write_data(0x00); // default is 1, 0 = lower step-up cycle in booster 2,4
-    write_command(0xC3);
-    write_data(0x8A);
-    write_data(0x2A);
-    write_command(0xC4);
-    write_data(0x8A);
-    write_data(0xEE);
-    //---------------------------------End ST7735R Power Sequence-------------------------------------//
-    write_command(0xC5); //VCOM voltage setting
-    write_data(0x0E);
-    write_command(0x36); //MX, MY, RGB mode
-    write_data(0xC8);   // MH=0 : horiz refresh left to right
-                        // RGB=1 : BGR color filter panel
-                        // ML=0 : vert refresh top to bottom
-                        // MV=0, MX=MY=1 (controls MCU to memory write/read direction)
-    //write_data(0xE8);  //MV, MX, MY
-    //write_data(0x48); //!MV, !MY, MX
-    //write_data(0x08); // ! ! !
-
-    //------------------------------------ST7735R Gamma Sequence-----------------------------------------//
-    write_command(0xe0);
-    write_data(0x02);
-    write_data(0x1c);
-    write_data(0x07);
-    write_data(0x12);
-    write_data(0x37);
-    write_data(0x32);
-    write_data(0x29);
-    write_data(0x2d);
-    write_data(0x29);
-    write_data(0x25);
-    write_data(0x2b);
-    write_data(0x39);
-    write_data(0x00);
-    write_data(0x01);
-    write_data(0x03);
-    write_data(0x10);
-    write_command(0xe1);
-    write_data(0x03);
-    write_data(0x1d);
-    write_data(0x07);
-    write_data(0x06);
-    write_data(0x2e);
-    write_data(0x2c);
-    write_data(0x29);
-    write_data(0x2d);
-    write_data(0x2e);
-    write_data(0x2e);
-    write_data(0x37);
-    write_data(0x3f);
-    write_data(0x00);
-    write_data(0x00);
-    write_data(0x02);
-    write_data(0x10);
-
-    // column address set: XS = 0, XE = 127
-    write_command(0x2A);
-    write_data(0x00);
-    //write_data(0x02);
-    write_data(0x00);
-    write_data(0x00);
-    //write_data(0x81);
-    write_data(0x7F);
-
-    // row address set: YS = 0, YE = 159
-    write_command(0x2B);
-    write_data(0x00);
-    write_data(0x00);
-    write_data(0x00);
-    write_data(0x9F);
-    //------------------------------------End ST7735R Gamma Sequence-----------------------------------------//
-
-    // interface pixel format:
-    write_command(0x3A);
-    write_data(0x05); // 16-bit per pixel
-    //write_command(0x3A);//65k mode
-    //write_data(0x05);
-
-    // display on
-    write_command(0x29);
+  writeComm(0x44);//set RAM x address start/end  command
+  writeData(Xs);
+  writeData(Xe);
+  writeComm(0x45);//set RAM y address start/end  command
+  writeData(Ys);
+  writeData(Ye);
+  writeComm(0x4E);//set RAM x address count to Xs;
+  writeData(Xs);
+  writeComm(0x4F);//set RAM y address count to Ys;
+  writeData(Ys);
 }
 
-
-void ClearDisplay(void)
+void closeBump(void)
 {
-    write_command(0x2C); // memory write
-    dsp_single_colour(0xff, 0xff);
+  writeComm(0x22);   // display update
+  writeData(0x03);  // disable CP, then disable clock signal
+  writeComm(0x20);  // master activation
 }
 
+void configureLUTRegister(void)
+{
+  unsigned char i;
+const unsigned char init_data[]={
+    0x82,0x00,0x00,0x00,0xAA,0x00,0x00,0x00,
+    0xAA,0xAA,0x00,0x00,0xAA,0xAA,0xAA,0x00,
+    0x55,0xAA,0xAA,0x00,0x55,0x55,0x55,0x55,
+    0xAA,0xAA,0xAA,0xAA,0x55,0x55,0x55,0x55,
+    0xAA,0xAA,0xAA,0xAA,0x15,0x15,0x15,0x15,
+    0x05,0x05,0x05,0x05,0x01,0x01,0x01,0x01,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x41,0x45,0xF1,0xFF,0x5F,0x55,0x01,0x00,
+    0x00,0x00,};
+  writeComm(0x32);  //write data to LUT register
+  for(i=0;i<90;i++)
+    writeData(init_data[i]);
+}
+
+#if 0
 void Write8bitPixel(uint8_t pixel)
 {
     uint16_t pixel16 = 0;
@@ -263,10 +182,11 @@ void WritePixel(uint16_t pixel)
 
 #define ROW_OFFSET_L    0
 #define COL_OFFSET_L    0
-
+#endif
 
 void SetupTile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsigned char tileH)
 {
+#if 0
     unsigned int low, high;
 
     // setup tile boundaries
@@ -290,11 +210,13 @@ void SetupTile(unsigned int tileX, unsigned int tileY, unsigned char tileW, unsi
 
     // write tile
     write_command(0x2C); // memory write
+#endif
 }
 
 static CARDBPP hextileBuffer[16][16];
 
 void DrawRawTile(unsigned int pixelCount, uint8_t pixelBuffer[]) {
+#if 0
     for (unsigned int i = 0; i < pixelCount; i++) {
 #if (LCD_BPP == 16)
         WritePixel(pixelBuffer[i*2] + pixelBuffer[(i*2)+1]*256);
@@ -309,10 +231,12 @@ void DrawRawTile(unsigned int pixelCount, uint8_t pixelBuffer[]) {
         WritePixel(pixel);
 #endif
     }
+#endif
 }
 
 
 void DrawHextile(unsigned char tileW, unsigned char tileH) {
+#if 0
     for (unsigned char j = 0; j < tileH; j++) {
         for (unsigned char i = 0; i < tileW; i++) {
 #if (LCD_BPP == 16)
@@ -330,27 +254,47 @@ void DrawHextile(unsigned char tileW, unsigned char tileH) {
 
         }
     }
+#endif
 }
 
 extern int memafter;
 
 void FillSubRectangle(unsigned char x, unsigned char y, unsigned char w, unsigned char h, unsigned int pixel) {
+#if 0
     for (unsigned char j = y; j < y + h; j++) {
         for (unsigned char i = x; i < x + w; i++) {
             hextileBuffer[j][i] = pixel;
             memafter = freeMemory();
         }
     }
+#endif
+}
+
+
+void EinkSetup(void)
+{
+    GT_CS2_HIGH;
+
+    /* Set MOSI and SCK output, all others input */
+    DDR_SPI |= (1 << DD_MOSI);
+    DDR_SPI |= (1 << DD_SCK);
+
+    PORT_SPI |= (1 << DD_SPI_SS); // make this pin pulled up to avoid low level during SPI transfer, which would set SPI to slave mode
+
+    /* Enable SPI, Master */
+    SPCR = (1 << SPE) | (1 << MSTR);
+
+    // set SCK frequency = fosc/2
+    //SPSR = (1 << SPI2X);
 }
 
 
 void LcdInit(void) {
-    SpiLcdSetup();
-    lcd_initial();
+    EinkSetup();
 
-    write_command(0x2C); // memory write
-    dsp_single_colour(0xAA, 0xAA);
-
-    ClearDisplay();
+    clearScreen();
 }
+
+
+
 

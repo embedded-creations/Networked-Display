@@ -50,6 +50,7 @@ SRC =	main.c \
 	usb_serial.c \
 	buffuart.c \
 	SpiLcd.c \
+	eink.c \
 	hextile.c \
 	MemoryFree.c
 
