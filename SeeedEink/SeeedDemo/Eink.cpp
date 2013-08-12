@@ -51,7 +51,7 @@ void E_ink::initEink(void) //initial code
   
   writeComm(0x2C);//vcom
   writeData(0xA0);
-  writeComm(0x3C);//board
+  writeComm(0x3C);//border waveform
   writeData(0x63);
   writeComm(0x22);//display updata sequence option ,in page 33
   writeData(0xC4);//enable sequence: clk -> CP -> LUT -> initial display -> pattern display

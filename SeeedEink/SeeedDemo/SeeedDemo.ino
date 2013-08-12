@@ -14,40 +14,57 @@ INT8U dimensionalData[]=
  };
  
 void drawPattern() {
- Eink.displayChar(0,130,'A');
-Eink.displayChar(0,122,'B');
-Eink.displayChar(0,114,'C');
-Eink.displayChar(0,106,'D');
-Eink.displayChar(0,98,'E');
-Eink.displayChar(0,90,'F');
-Eink.displayChar(0,82,'G');
+  Eink.displayChar(0,130,'A');
+  Eink.displayChar(0,122,'B');
+  Eink.displayChar(0,114,'C');
+  Eink.displayChar(0,106,'D');
+  Eink.displayChar(0,98,'E');
+  Eink.displayChar(0,90,'F');
+  Eink.displayChar(0,82,'G');
  
+  Eink.displayChar(4,130,'A');
+  Eink.displayChar(4,122,'B');
+  Eink.displayChar(4,114,'C');
+  Eink.displayChar(4,106,'D');
+  Eink.displayChar(4,98,'E');
+  Eink.displayChar(4,90,'F');
+  Eink.displayChar(4,81,'G');
 
-Eink.displayChar(5,130,'0');
-Eink.displayChar(5,122,'1');
-Eink.displayChar(5,114,'2');
-Eink.displayChar(5,106,'3');
-Eink.displayChar(5,98,'4');
-Eink.displayChar(5,90,'5');
-Eink.displayChar(5,82,'6');
-Eink.displayChar(5,74,'7');
-Eink.displayChar(5,66,'8');
-Eink.displayChar(5,58,'9');
- 
+  Eink.displayChar(8,130,'A');
+  Eink.displayChar(8,122,'B');
+  Eink.displayChar(8,114,'C');
+  Eink.displayChar(8,106,'D');
+  Eink.displayChar(8,98,'E');
+  Eink.displayChar(8,90,'F');
+  Eink.displayChar(8,80,'G');
 
-Eink.displayChar(10,130,0x0e10);
-Eink.displayChar(10,122,0x0e11);
-Eink.displayChar(10,114,0x0e12);
-Eink.displayChar(10,106,0x0e13);
-Eink.displayChar(10,98,0x0e14);
-Eink.displayChar(10,90,0x0e15);
-Eink.displayChar(10,82,0x0e16);
-Eink.displayChar(10,74,0x0e17);
-Eink.displayChar(10,66,0x0e18);
-Eink.displayChar(10,58,0x0e19);
-Eink.displayChar(10,50,0x0e1a);
+#if 0
+  Eink.displayChar(5,130,'0');
+  Eink.displayChar(5,122,'1');
+  Eink.displayChar(5,114,'2');
+  Eink.displayChar(5,106,'3');
+  Eink.displayChar(5,98,'4');
+  Eink.displayChar(5,90,'5');
+  Eink.displayChar(5,82,'6');
+  Eink.displayChar(5,74,'7');
+  Eink.displayChar(5,66,'8');
+  Eink.displayChar(5,58,'9');
+   
+  
+  Eink.displayChar(10,130,0x0e10);
+  Eink.displayChar(10,122,0x0e11);
+  Eink.displayChar(10,114,0x0e12);
+  Eink.displayChar(10,106,0x0e13);
+  Eink.displayChar(10,98,0x0e14);
+  Eink.displayChar(10,90,0x0e15);
+  Eink.displayChar(10,82,0x0e16);
+  Eink.displayChar(10,74,0x0e17);
+  Eink.displayChar(10,66,0x0e18);
+  Eink.displayChar(10,58,0x0e19);
+  Eink.displayChar(10,50,0x0e1a);
+#endif
 
-Eink.refreshScreen(); 
+  Eink.refreshScreen(); 
 }
  
 void setup()
@@ -55,9 +72,8 @@ void setup()
   SPI.begin();
 
   Eink.clearScreen();// clear the screen
-
-  //Eink.refreshScreen(); 
 }
+
 
 void loop()
 {
@@ -69,3 +85,4 @@ void loop()
   Eink.refreshScreen(); 
   delay(2000);
 }
+
